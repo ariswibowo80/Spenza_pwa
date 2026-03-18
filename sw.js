@@ -1,18 +1,24 @@
-// Spenza Service Worker v1.0
-const CACHE_NAME = 'spenza-v1';
+// Spenza Service Worker v2.1
+const CACHE_NAME = 'spenza-v2.1';
+const BASE = self.registration.scope;
+
+// Only cache the main page — use relative URLs to work on any subdirectory
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icons/icon-192.svg',
-  '/icons/icon-512.svg',
+  BASE,
+  BASE + 'index.html',
+  BASE + 'manifest.json',
+  BASE + 'icons/icon-192.svg',
+  BASE + 'icons/icon-512.svg',
 ];
 
-// Install — cache static assets
+// Install — cache what we can, don't fail if something is missing
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(STATIC_ASSETS);
+      // Add each file individually so one failure doesn't break everything
+      return Promise.allSettled(
+        STATIC_ASSETS.map(url => cache.add(url).catch(() => {}))
+      );
     }).then(() => self.skipWaiting())
   );
 });
@@ -26,37 +32,28 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch — cache-first for static, network-first for Google APIs
+// Fetch — network first for HTML, cache-first for assets
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Always network for Google auth / APIs
-  if (url.hostname.includes('google') || url.hostname.includes('googleapis') || url.hostname.includes('gstatic')) {
-    return; // let browser handle
-  }
+  // Skip non-GET and cross-origin requests (Google APIs, fonts, CDN)
+  if (event.request.method !== 'GET') return;
+  if (url.origin !== self.location.origin) return;
 
-  // Cache-first for everything else
   event.respondWith(
     caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        if (!response || response.status !== 200 || response.type !== 'basic') return response;
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        return response;
-      }).catch(() => {
-        // Offline fallback
-        if (event.request.destination === 'document') {
-          return caches.match('/index.html');
+      const networkFetch = fetch(event.request).then(response => {
+        if (response && response.status === 200 && response.type === 'basic') {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
-      });
+        return response;
+      }).catch(() => cached || new Response('Offline', {status: 503}));
+
+      // For HTML pages: network first, fall back to cache
+      if (event.request.destination === 'document') return networkFetch;
+      // For everything else: cache first, fall back to network
+      return cached || networkFetch;
     })
   );
-});
-
-// Background sync placeholder
-self.addEventListener('sync', event => {
-  if (event.tag === 'sync-transactions') {
-    console.log('Background sync: transactions');
-  }
 });
