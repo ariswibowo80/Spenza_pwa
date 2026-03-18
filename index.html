@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0f">
-<title>Spenza v2.1</title>
+<title>Spenza v2.2</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <script src="https://accounts.google.com/gsi/client" async></script>
@@ -277,7 +277,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
   <!-- DASHBOARD -->
   <div class="page active" id="pg-dashboard">
     <div class="hdr">
-      <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.1</span></div>
+      <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.2</span></div>
       <div style="display:flex;gap:8px;align-items:center;">
         <div class="ibtn" onclick="openTfDrawer()"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
         <div class="uchip" onclick="toggleUMenu()" id="uchip"><span class="uchip-n" id="chip-n">User</span><div class="uav" id="chip-av">U</div></div>
@@ -380,7 +380,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
           <div style="font-size:16px;font-weight:700;" id="more-name">User</div>
           <div style="font-size:12px;color:var(--txm);margin-top:2px;" id="more-email"></div>
           <div style="font-size:11px;color:var(--txm);margin-top:8px;" id="more-count"></div>
-          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.1</div>
+          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.2</div>
         </div>
       </div>
       <div class="mitem" onclick="openAddDrawer()"><div class="mico" style="background:rgba(124,110,255,.15);">➕</div><div class="mlbl">Add Transaction</div><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--txm);"><path d="M9 18l6-6-6-6"/></svg></div>
@@ -956,24 +956,25 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── BOOT ──────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', function() {
-  // Init Google auth if SDK loaded (async, may not be ready yet)
+var googleInited = false;
+function initGoogle() {
+  if (googleInited) return;
   try {
     if (typeof google !== 'undefined' && google.accounts && google.accounts.id && GID.indexOf('YOUR_')===-1) {
       google.accounts.id.initialize({client_id:GID,callback:handleGoogleCred,auto_select:false});
+      googleInited = true;
     }
   } catch(e){}
-  // Check existing session & show correct screen
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  initGoogle();
   checkAuth();
 });
 
-// Also handle case where GSI loads after DOMContentLoaded
+// In case GSI script loads after DOMContentLoaded
 window.addEventListener('load', function() {
-  try {
-    if (typeof google !== 'undefined' && google.accounts && google.accounts.id && GID.indexOf('YOUR_')===-1) {
-      google.accounts.id.initialize({client_id:GID,callback:handleGoogleCred,auto_select:false});
-    }
-  } catch(e){}
+  initGoogle();
 });
 </script>
 </body>
