@@ -18,11 +18,11 @@
 <link rel="apple-touch-icon" href="icons/icon-192.svg">
 
 <!-- Google Sign-In SDK -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://accounts.google.com/gsi/client"></script>
 
 <!-- Fonts & Charts -->
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 
 <style>
 :root {
@@ -547,6 +547,7 @@ body{font-family:'Outfit',sans-serif;color:var(--text);-webkit-font-smoothing:an
 
     <div class="login-divider"><span>or</span></div>
 
+    <div id="login-error" style="color:#ff5f7e;font-size:13px;margin-bottom:12px;display:none;padding:10px;background:rgba(255,95,126,.1);border-radius:10px;"></div>
     <button class="demo-btn" onclick="signInAsDemo()">
       👀 Try Demo Mode
     </button>
@@ -845,7 +846,7 @@ body{font-family:'Outfit',sans-serif;color:var(--text);-webkit-font-smoothing:an
 // CONFIG — Replace with YOUR Google Client ID
 // Get one free at: https://console.cloud.google.com
 // ════════════════════════════════════════════════════
-const GOOGLE_CLIENT_ID = '257901325656-gkjmcoe1d0l860v6cauino79ickvmend.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
 // ════════════════════════════════════════════════════
 
 // ── DATA ──
@@ -882,72 +883,46 @@ function catColor(i) { return CAT_COLORS[i % CAT_COLORS.length]; }
 function avatarInitials(s) { return (s||'?').split(' ').slice(0,2).map(x=>x[0]||'').join('').toUpperCase(); }
 
 // ════════════════════════════════════════════════════
-// AUTH — GOOGLE SIGN-IN
+// AUTH
 // ════════════════════════════════════════════════════
+const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+
 let currentUser = null;
 let deferredInstallPrompt = null;
 
-function initGoogleAuth() {
-  // Check if Google GSI loaded
-  if (typeof google === 'undefined' || !google.accounts) {
-    console.warn('Google GSI not loaded — demo mode only');
-    return;
-  }
-  try {
-    google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: handleGoogleCredential,
-      auto_select: false,
-      cancel_on_tap_outside: true,
-    });
-    // Render button in container
-    google.accounts.id.renderButton(
-      document.getElementById('google-signin-btn'),
-      { type: 'standard', theme: 'filled_black', size: 'large', width: 300 }
-    );
-    // Try silent sign-in for returning users
-    google.accounts.id.prompt((notification) => {
-      // One Tap prompt — silent if user previously signed in
-    });
-  } catch(e) {
-    console.warn('Google auth init failed:', e);
-  }
-}
-
+// Called by Google GSI after it loads (set as data-callback or called manually)
 function handleGoogleCredential(response) {
   try {
-    // Decode JWT payload (no verification needed client-side for display)
-    const payload = JSON.parse(atob(response.credential.split('.')[1]));
+    const parts = response.credential.split('.');
+    const payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
     currentUser = {
       name: payload.name || 'User',
       email: payload.email || '',
       picture: payload.picture || '',
-      sub: payload.sub,
+      sub: payload.sub || '',
     };
-    // Store session
     localStorage.setItem('spenza_user', JSON.stringify(currentUser));
     enterApp();
   } catch(e) {
-    console.error('Failed to decode Google credential:', e);
-    showToast('Sign-in failed. Try demo mode.');
+    console.error('Google credential error:', e);
+    showLoginError('Sign-in failed. Please try Demo Mode.');
   }
 }
 
+function showLoginError(msg) {
+  const el = document.getElementById('login-error');
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
 function signInWithGoogle() {
-  // Check if proper client ID is configured
-  if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
-    showToast('⚠️ Configure Google Client ID first');
-    setTimeout(() => {
-      if (confirm('Google OAuth needs setup.\n\nWould you like to try Demo Mode instead?')) {
-        signInAsDemo();
-      }
-    }, 500);
+  if (GOOGLE_CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID')) {
+    showLoginError('Google Client ID not configured yet. Please use Demo Mode.');
     return;
   }
-  if (typeof google !== 'undefined' && google.accounts) {
+  if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
     google.accounts.id.prompt();
   } else {
-    showToast('Google Sign-In unavailable');
+    showLoginError('Google Sign-In failed to load. Check your internet connection or use Demo Mode.');
   }
 }
 
@@ -964,64 +939,82 @@ function signInAsDemo() {
 }
 
 function signOut() {
-  if (typeof google !== 'undefined' && google.accounts) {
-    try { google.accounts.id.disableAutoSelect(); } catch(e) {}
-  }
+  try {
+    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+      google.accounts.id.disableAutoSelect();
+    }
+  } catch(e) {}
   localStorage.removeItem('spenza_user');
   currentUser = null;
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
-  switchTab('dashboard');
-}
-
-function checkAuth() {
-  const stored = localStorage.getItem('spenza_user');
-  if (stored) {
-    try {
-      currentUser = JSON.parse(stored);
-      enterApp();
-      return;
-    } catch(e) { localStorage.removeItem('spenza_user'); }
-  }
-  // Show login
-  document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('loading-screen').style.display = 'none';
 }
 
-function enterApp() {
-  const loading = document.getElementById('loading-screen');
-  const login = document.getElementById('login-screen');
-  login.style.display = 'none';
-  loading.style.display = 'flex';
+function checkAuth() {
+  try {
+    const stored = localStorage.getItem('spenza_user');
+    if (stored) {
+      currentUser = JSON.parse(stored);
+      enterApp();
+      return;
+    }
+  } catch(e) {
+    localStorage.removeItem('spenza_user');
+  }
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+}
 
-  // Simulate brief load
-  setTimeout(() => {
-    loading.style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    updateUserUI();
-    buildMonthSelector();
-    renderDashContent();
-    initDropdowns();
-    setTxnFilter('all');
-    txnFiltered = [...allTransactions];
-  }, 800);
+function enterApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('loading-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+
+  setTimeout(function() {
+    try {
+      document.getElementById('loading-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      updateUserUI();
+      buildMonthSelector();
+      renderDashContent();
+      initDropdowns();
+      setTxnFilter('all');
+      txnFiltered = allTransactions.slice();
+    } catch(e) {
+      console.error('enterApp error:', e);
+      document.getElementById('loading-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+    }
+  }, 600);
 }
 
 function updateUserUI() {
   if (!currentUser) return;
-  const initials = currentUser.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  const avatarHtml = currentUser.picture
-    ? `<img src="${currentUser.picture}" alt="${currentUser.name}" onerror="this.style.display='none';this.parentElement.textContent='${initials}'">`
+  var words = (currentUser.name || 'U').split(' ');
+  var initials = words.map(function(w){ return w[0]||''; }).join('').slice(0,2).toUpperCase();
+  var avatarHtml = currentUser.picture
+    ? '<img src="' + currentUser.picture + '" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">'
     : initials;
 
-  document.getElementById('chip-name').textContent = currentUser.name.split(' ')[0];
-  document.getElementById('chip-avatar').innerHTML = avatarHtml;
-  document.getElementById('um-name').textContent = currentUser.name;
-  document.getElementById('um-email').textContent = currentUser.email;
-  document.getElementById('more-name').textContent = currentUser.name;
-  document.getElementById('more-email').textContent = currentUser.email;
-  document.getElementById('more-count').textContent = allTransactions.length.toLocaleString() + ' transactions';
-  document.getElementById('more-avatar').innerHTML = avatarHtml;
+  var chipName = document.getElementById('chip-name');
+  var chipAvatar = document.getElementById('chip-avatar');
+  var umName = document.getElementById('um-name');
+  var umEmail = document.getElementById('um-email');
+  var moreName = document.getElementById('more-name');
+  var moreEmail = document.getElementById('more-email');
+  var moreCount = document.getElementById('more-count');
+  var moreAvatar = document.getElementById('more-avatar');
+
+  if (chipName) chipName.textContent = words[0];
+  if (chipAvatar) chipAvatar.innerHTML = avatarHtml;
+  if (umName) umName.textContent = currentUser.name;
+  if (umEmail) umEmail.textContent = currentUser.email;
+  if (moreName) moreName.textContent = currentUser.name;
+  if (moreEmail) moreEmail.textContent = currentUser.email;
+  if (moreCount) moreCount.textContent = allTransactions.length.toLocaleString() + ' transactions';
+  if (moreAvatar) moreAvatar.innerHTML = avatarHtml;
 }
 
 function toggleUserMenu() {
@@ -1030,616 +1023,88 @@ function toggleUserMenu() {
 function closeUserMenu() {
   document.getElementById('user-menu').classList.remove('open');
 }
-document.addEventListener('click', e => {
+document.addEventListener('click', function(e) {
   if (!e.target.closest('#user-chip') && !e.target.closest('#user-menu')) {
     closeUserMenu();
   }
 });
 
 // ════════════════════════════════════════════════════
-// PWA — INSTALL PROMPT
+// PWA INSTALL
 // ════════════════════════════════════════════════════
-window.addEventListener('beforeinstallprompt', e => {
+window.addEventListener('beforeinstallprompt', function(e) {
   e.preventDefault();
   deferredInstallPrompt = e;
   showInstallBanner();
 });
 
 function showInstallBanner() {
-  const container = document.getElementById('install-banner-container');
+  var container = document.getElementById('install-banner-container');
   if (!container) return;
-  container.innerHTML = `
-    <div class="install-banner" onclick="installApp()">
-      <div style="font-size:28px;">📲</div>
-      <div class="install-banner-text">
-        <div class="install-banner-title">Install Spenza</div>
-        <div class="install-banner-sub">Add to home screen for the best experience</div>
-      </div>
-      <div class="install-banner-close" onclick="event.stopPropagation();dismissInstall()">✕</div>
-    </div>
-  `;
+  container.innerHTML = '<div class="install-banner" onclick="installApp()">' +
+    '<div style="font-size:28px;">📲</div>' +
+    '<div class="install-banner-text">' +
+      '<div class="install-banner-title">Install Spenza</div>' +
+      '<div class="install-banner-sub">Add to home screen for the best experience</div>' +
+    '</div>' +
+    '<div class="install-banner-close" onclick="event.stopPropagation();dismissInstall()">✕</div>' +
+    '</div>';
 }
 
-async function installApp() {
+function installApp() {
   if (!deferredInstallPrompt) return;
   deferredInstallPrompt.prompt();
-  const result = await deferredInstallPrompt.userChoice;
-  if (result.outcome === 'accepted') {
-    showToast('✅ Spenza installed!');
-    document.getElementById('install-banner-container').innerHTML = '';
-  }
-  deferredInstallPrompt = null;
+  deferredInstallPrompt.userChoice.then(function(result) {
+    if (result.outcome === 'accepted') {
+      showToast('✅ Spenza installed!');
+      var c = document.getElementById('install-banner-container');
+      if (c) c.innerHTML = '';
+    }
+    deferredInstallPrompt = null;
+  });
 }
 
 function dismissInstall() {
-  document.getElementById('install-banner-container').innerHTML = '';
+  var c = document.getElementById('install-banner-container');
+  if (c) c.innerHTML = '';
   deferredInstallPrompt = null;
 }
 
-window.addEventListener('appinstalled', () => {
-  showToast('✅ Spenza installed on your device!');
-  document.getElementById('install-banner-container').innerHTML = '';
+window.addEventListener('appinstalled', function() {
+  showToast('✅ Spenza installed!');
 });
-
-// ════════════════════════════════════════════════════
-// SERVICE WORKER
-// ════════════════════════════════════════════════════
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('SW registered:', reg.scope))
-      .catch(err => console.warn('SW failed:', err));
-  });
-}
-
-// ════════════════════════════════════════════════════
-// NAVIGATION
-// ════════════════════════════════════════════════════
-let currentTab = 'dashboard';
-
-function switchTab(tab) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(n => n.classList.remove('active'));
-  if (tab === 'account-detail') {
-    document.getElementById('pg-acct-detail').classList.add('active');
-    return;
-  }
-  document.getElementById('pg-' + tab).classList.add('active');
-  document.getElementById('nt-' + tab).classList.add('active');
-  currentTab = tab;
-  if (tab === 'accounts') renderAccounts();
-  if (tab === 'transactions') renderTxns();
-  if (tab === 'reports') renderCatReport();
-  if (tab === 'more') updateUserUI();
-}
-
-function backToAccounts() {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('pg-accounts').classList.add('active');
-  document.getElementById('nt-accounts').classList.add('active');
-  currentTab = 'accounts';
-}
-
-// ════════════════════════════════════════════════════
-// INIT DROPDOWNS (once)
-// ════════════════════════════════════════════════════
-let dropdownsInited = false;
-function initDropdowns() {
-  if (dropdownsInited) return;
-  dropdownsInited = true;
-
-  const addA = document.getElementById('add-account');
-  const addC = document.getElementById('add-cat');
-  const tfF = document.getElementById('tf-from');
-  const tfT = document.getElementById('tf-to');
-  const fcA = document.getElementById('fc-account');
-  const fcY = document.getElementById('fc-year');
-  const rcY = document.getElementById('rcat-year');
-  const rcA = document.getElementById('rcat-acct');
-  const rmY = document.getElementById('rmonth-year');
-  const rmA = document.getElementById('rmonth-acct');
-  const ryA = document.getElementById('ryear-acct');
-
-  allAccounts.forEach(a => {
-    const lbl = acctLabel(a);
-    [addA, tfF, tfT, fcA, rcA, rmA, ryA].forEach(sel => {
-      const o = new Option(lbl, a); sel.add(o);
-    });
-  });
-  if (allAccounts.length > 1) tfT.selectedIndex = 1;
-
-  allCategories.forEach(c => { addC.add(new Option(c, c)); });
-
-  allYears.forEach(y => {
-    [fcY, rcY, rmY].forEach(sel => { sel.add(new Option(y, y)); });
-  });
-  rmY.value = allYears[0] || '';
-}
-
-// ════════════════════════════════════════════════════
-// DASHBOARD — MONTH SELECTOR
-// ════════════════════════════════════════════════════
-let selectedMonth = '';
-
-function buildMonthSelector() {
-  const months = [...new Set(allTransactions.map(t => t.date.slice(0,7)))].sort().reverse();
-  const scroll = document.getElementById('month-scroll');
-  const now = new Date();
-  const thisMonth = now.toISOString().slice(0,7);
-  selectedMonth = months.includes(thisMonth) ? thisMonth : months[0] || '';
-
-  scroll.innerHTML = '<div class="month-chip" id="mc-all" onclick="selectMonth(\'\')">All</div>'
-    + months.slice(0,24).map(m => {
-        const [y,mo] = m.split('-');
-        return `<div class="month-chip" id="mc-${m}" onclick="selectMonth(\'${m}\')">${MONTH_NAMES[parseInt(mo)-1]} ${y.slice(2)}</div>`;
-      }).join('');
-
-  setTimeout(() => {
-    const active = document.getElementById('mc-' + selectedMonth) || document.getElementById('mc-all');
-    active.classList.add('active');
-    active.scrollIntoView({block:'nearest',inline:'center'});
-  }, 60);
-}
-
-function selectMonth(m) {
-  selectedMonth = m;
-  document.querySelectorAll('.month-chip').forEach(c => c.classList.remove('active'));
-  const id = m ? 'mc-'+m : 'mc-all';
-  const el = document.getElementById(id);
-  if (el) { el.classList.add('active'); el.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'}); }
-  renderDashContent();
-}
-
-function getDashTxns() {
-  return selectedMonth ? allTransactions.filter(t => t.date.startsWith(selectedMonth)) : allTransactions;
-}
-
-// ════════════════════════════════════════════════════
-// DASHBOARD CONTENT
-// ════════════════════════════════════════════════════
-let trendChartInst = null;
-
-function renderDashContent() {
-  const txns = getDashTxns();
-  const expense = txns.filter(t => t.amount < 0 && !isTransfer(t.category)).reduce((s,t) => s+t.amount, 0);
-  const income = txns.filter(t => t.amount > 0 && !isTransfer(t.category)).reduce((s,t) => s+t.amount, 0);
-  const net = income + expense;
-  const totalBalance = Object.values(accountBalances).reduce((s,b) => s+b, 0);
-  const label = selectedMonth ? (() => { const [y,m] = selectedMonth.split('-'); return MONTH_NAMES[parseInt(m)-1]+' '+y; })() : 'All Time';
-
-  document.getElementById('dash-hero').innerHTML = `
-    <div class="balance-hero">
-      <div class="balance-label">${label} · Net Flow</div>
-      <div class="balance-amount ${net >= 0 ? 'green' : 'red'}">Rp ${fmtNum(net)}</div>
-      <div class="balance-row">
-        <div class="balance-stat">
-          <div class="balance-stat-label">Income</div>
-          <div class="balance-stat-val text-green">+${fmtNum(income)}</div>
-        </div>
-        <div class="balance-divider"></div>
-        <div class="balance-stat">
-          <div class="balance-stat-label">Expenses</div>
-          <div class="balance-stat-val text-red">-${fmtNum(Math.abs(expense))}</div>
-        </div>
-        <div class="balance-divider"></div>
-        <div class="balance-stat">
-          <div class="balance-stat-label">Net Worth</div>
-          <div class="balance-stat-val" style="color:var(--accent);">Rp ${fmtNum(totalBalance)}</div>
-        </div>
-      </div>
-    </div>`;
-
-  document.getElementById('dash-stats').innerHTML = `
-    <div class="stat-pill">
-      <div class="stat-pill-label">Transactions</div>
-      <div class="stat-pill-val" style="color:var(--text);">${txns.length}</div>
-    </div>
-    <div class="stat-pill">
-      <div class="stat-pill-label">Accounts</div>
-      <div class="stat-pill-val" style="color:var(--accent);">${allAccounts.length}</div>
-    </div>
-    <div class="stat-pill">
-      <div class="stat-pill-label">Top Category</div>
-      <div class="stat-pill-val" style="color:var(--accent2);font-size:10px;font-family:Outfit,sans-serif;">${getTopCat(txns)}</div>
-    </div>`;
-
-  document.getElementById('dash-accts').innerHTML = allAccounts.map(a => `
-    <div class="acct-pill" onclick="openAcctDetail('${a}')">
-      <div class="acct-pill-name">${acctLabel(a)}</div>
-      <div class="acct-pill-bal ${accountBalances[a] < 0 ? 'red' : ''}">Rp ${fmtNum(accountBalances[a])}</div>
-    </div>`).join('');
-
-  renderTrend();
-  renderDashCats(txns);
-}
-
-function getTopCat(txns) {
-  const byCat = {};
-  txns.filter(t => t.amount < 0 && !isTransfer(t.category)).forEach(t => { byCat[t.category] = (byCat[t.category]||0) + Math.abs(t.amount); });
-  const top = Object.entries(byCat).sort((a,b) => b[1]-a[1])[0];
-  return top ? top[0].slice(0,14) : '—';
-}
-
-function renderTrend() {
-  const months = [];
-  const now = new Date();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push(d.toISOString().slice(0,7));
-  }
-  const expData = months.map(m => Math.abs(allTransactions.filter(t => t.date.startsWith(m) && t.amount < 0 && !isTransfer(t.category)).reduce((s,t) => s+t.amount, 0)));
-  const labels = months.map(m => { const [y,mo] = m.split('-'); return MONTH_NAMES[parseInt(mo)-1]; });
-  if (trendChartInst) trendChartInst.destroy();
-  trendChartInst = new Chart(document.getElementById('trendChart'), {
-    type: 'line',
-    data: { labels, datasets: [{ data: expData, borderColor: '#7c6eff', backgroundColor: 'rgba(124,110,255,.15)', tension: 0.4, fill: true, pointRadius: 4, pointBackgroundColor: '#7c6eff' }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-      scales: { x: { ticks: { color: '#6b6a8a', font: { size: 10 } }, grid: { color: '#2a2a3d' } }, y: { ticks: { color: '#6b6a8a', font: { size: 9 }, callback: v => fmtNum(v) }, grid: { color: '#2a2a3d' } } } }
-  });
-}
-
-function renderDashCats(txns) {
-  const byCat = {};
-  txns.filter(t => t.amount < 0 && !isTransfer(t.category)).forEach(t => { byCat[t.category] = (byCat[t.category]||0) + Math.abs(t.amount); });
-  const sorted = Object.entries(byCat).sort((a,b) => b[1]-a[1]);
-  const total = sorted.reduce((s,e) => s+e[1], 0);
-  const el = document.getElementById('dash-cats');
-  if (!sorted.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">No expenses this period</div></div>'; return; }
-  el.innerHTML = sorted.map(([cat, amt], i) => `
-    <div class="cat-item" onclick="openCatDetail('${cat.replace(/'/g,"\'").replace(/"/g,'&quot;')}', '${selectedMonth}')">
-      <div class="cat-dot" style="background:${catColor(i)};"></div>
-      <div style="flex:1;min-width:0;">
-        <div class="cat-item-name">${cat}</div>
-        <div style="margin-top:4px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;">
-          <div style="height:100%;width:${(amt/sorted[0][1]*100).toFixed(1)}%;background:${catColor(i)};border-radius:2px;"></div>
-        </div>
-      </div>
-      <div class="cat-item-right">
-        <div class="cat-item-amount">-${fmtNum(amt)}</div>
-        <div class="cat-item-pct">${(amt/total*100).toFixed(1)}%</div>
-      </div>
-      <svg class="cat-chevron" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-    </div>`).join('');
-}
-
-// ════════════════════════════════════════════════════
-// CATEGORY DETAIL DRAWER
-// ════════════════════════════════════════════════════
-function openCatDetail(cat, month) {
-  let txns = allTransactions.filter(t => t.category === cat && t.amount < 0);
-  if (month) txns = txns.filter(t => t.date.startsWith(month));
-  txns = txns.sort((a,b) => Math.abs(b.amount) - Math.abs(a.amount));
-  const total = txns.reduce((s,t) => s+Math.abs(t.amount), 0);
-  document.getElementById('cat-detail-title').textContent = cat;
-  document.getElementById('cat-detail-total').textContent = '-Rp ' + fmtFull(total);
-  document.getElementById('cat-detail-count').textContent = txns.length;
-  const list = document.getElementById('cat-detail-list');
-  list.innerHTML = txns.length ? txns.map(t => `
-    <div class="cat-txn-item">
-      <div class="cat-txn-avatar" style="background:rgba(124,110,255,.15);color:var(--accent);">${avatarInitials(t.payee)}</div>
-      <div class="cat-txn-info">
-        <div class="cat-txn-payee">${t.payee}</div>
-        <div class="cat-txn-sub">${t.date} · ${acctLabel(t.account)}${t.remarks ? ' · '+t.remarks : ''}</div>
-      </div>
-      <div class="cat-txn-amount">-${fmtNum(Math.abs(t.amount))}</div>
-    </div>`).join('') : '<div class="empty-state"><div class="empty-state-text">No transactions</div></div>';
-  openDrawer('cat-detail-overlay');
-}
-
-// ════════════════════════════════════════════════════
-// ACCOUNTS
-// ════════════════════════════════════════════════════
-function renderAccounts() {
-  const totalBal = Object.values(accountBalances).reduce((s,b) => s+b, 0);
-  const pos = Object.values(accountBalances).filter(b => b > 0).reduce((s,b) => s+b, 0);
-  const neg = Object.values(accountBalances).filter(b => b < 0).reduce((s,b) => s+b, 0);
-  document.getElementById('acct-stats').innerHTML = `
-    <div class="stat-pill"><div class="stat-pill-label">Net Worth</div><div class="stat-pill-val" style="color:var(--accent);">Rp ${fmtNum(totalBal)}</div></div>
-    <div class="stat-pill"><div class="stat-pill-label">Total In</div><div class="stat-pill-val text-green">${fmtNum(pos)}</div></div>
-    <div class="stat-pill"><div class="stat-pill-label">Deficits</div><div class="stat-pill-val text-red">${fmtNum(neg)}</div></div>`;
-  const cols = ['#7c6eff','#ff6e9c','#6effe8','#ffb86e','#4fffb0','#60a5fa'];
-  document.getElementById('acct-list').innerHTML = allAccounts.map((a, i) => {
-    const bal = accountBalances[a];
-    const color = cols[i % cols.length];
-    const initials = acctLabel(a).split(/[\s(]/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
-    return `<div class="account-row" onclick="openAcctDetail('${a}')">
-      <div class="account-avatar" style="background:${color}20;color:${color};">${initials}</div>
-      <div class="account-info">
-        <div class="account-info-name">${acctLabel(a)}</div>
-        <div class="account-info-sub">${RAW_DATA[a].length} transactions</div>
-      </div>
-      <div><div class="account-info-bal ${bal < 0 ? 'red' : 'green'}">Rp ${fmtNum(bal)}</div></div>
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--text-muted);flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg>
-    </div>`;
-  }).join('');
-}
-
-let acctDetailKey = null, acctDetailAll = [], acctDetailShown = 50;
-function openAcctDetail(acct) {
-  acctDetailKey = acct;
-  acctDetailAll = allTransactions.filter(t => t.account === acct);
-  acctDetailShown = 50;
-  document.getElementById('acct-detail-search').value = '';
-  document.getElementById('acct-detail-title').textContent = acctLabel(acct);
-  const bal = accountBalances[acct];
-  const inc = acctDetailAll.filter(t => t.amount > 0).reduce((s,t) => s+t.amount, 0);
-  const exp = acctDetailAll.filter(t => t.amount < 0).reduce((s,t) => s+t.amount, 0);
-  document.getElementById('acct-detail-stats').innerHTML = `
-    <div class="stat-pill"><div class="stat-pill-label">Balance</div><div class="stat-pill-val ${bal<0?'text-red':'text-green'}">Rp ${fmtNum(bal)}</div></div>
-    <div class="stat-pill"><div class="stat-pill-label">In</div><div class="stat-pill-val text-green">+${fmtNum(inc)}</div></div>
-    <div class="stat-pill"><div class="stat-pill-label">Out</div><div class="stat-pill-val text-red">-${fmtNum(Math.abs(exp))}</div></div>`;
-  renderAcctDetailTxns(acctDetailAll);
-  switchTab('account-detail');
-}
-function filterAcctDetail() {
-  const q = document.getElementById('acct-detail-search').value.toLowerCase();
-  const filtered = acctDetailAll.filter(t => t.payee.toLowerCase().includes(q) || t.remarks.toLowerCase().includes(q) || t.category.toLowerCase().includes(q));
-  acctDetailShown = 50;
-  renderAcctDetailTxns(filtered);
-}
-function renderAcctDetailTxns(txns) {
-  const paged = txns.slice(0, acctDetailShown);
-  let html = renderGroupedTxns(groupByDate(paged));
-  if (acctDetailShown < txns.length) html += `<div class="load-more-btn" onclick="acctDetailShown+=50;filterAcctDetail()">Load ${txns.length-acctDetailShown} more</div>`;
-  document.getElementById('acct-detail-txns').innerHTML = html || '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">No transactions</div></div>';
-}
-
-// ════════════════════════════════════════════════════
-// TRANSACTIONS
-// ════════════════════════════════════════════════════
-let txnFilter = 'all', txnShown = 50, txnFiltered = [];
-function setTxnFilter(f) {
-  txnFilter = f;
-  ['all','expense','income','transfer'].forEach(x => document.getElementById('fc-'+x)?.classList.toggle('active', x === f));
-  filterTxns();
-}
-function filterTxns() {
-  const q = document.getElementById('txn-search').value.toLowerCase();
-  const acct = document.getElementById('fc-account').value;
-  const year = document.getElementById('fc-year').value;
-  txnFiltered = allTransactions.filter(t => {
-    if (acct && t.account !== acct) return false;
-    if (year && !t.date.startsWith(year)) return false;
-    if (q && !t.payee.toLowerCase().includes(q) && !t.remarks.toLowerCase().includes(q)) return false;
-    if (txnFilter === 'expense') return t.amount < 0 && !isTransfer(t.category);
-    if (txnFilter === 'income') return t.amount > 0 && !isTransfer(t.category);
-    if (txnFilter === 'transfer') return isTransfer(t.category);
-    return true;
-  });
-  txnShown = 50;
-  renderTxns();
-}
-function renderTxns() {
-  const paged = txnFiltered.slice(0, txnShown);
-  let html = renderGroupedTxns(groupByDate(paged), true);
-  if (txnShown < txnFiltered.length) html += `<div class="load-more-btn" onclick="txnShown+=50;renderTxns()">Load ${txnFiltered.length-txnShown} more</div>`;
-  document.getElementById('txn-list').innerHTML = html || '<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">No transactions found</div></div>';
-}
-
-function groupByDate(txns) {
-  const g = {};
-  txns.forEach(t => { if (!g[t.date]) g[t.date]=[]; g[t.date].push(t); });
-  return g;
-}
-function renderGroupedTxns(groups, showAccount=false) {
-  return Object.entries(groups).sort((a,b) => b[0].localeCompare(a[0])).map(([date, txns]) => {
-    const dayTotal = txns.reduce((s,t) => s+t.amount, 0);
-    const [y,m,d] = date.split('-');
-    const dateStr = `${d} ${MONTH_NAMES[parseInt(m)-1]} ${y}`;
-    return `<div class="txn-group-label">${dateStr} <span style="float:right;color:${dayTotal>=0?'var(--green)':'var(--red)'};">${dayTotal>=0?'+':''}${fmtNum(dayTotal)}</span></div>` +
-      txns.map(t => {
-        const bg = t.amount >= 0 ? 'rgba(79,255,176,.1)' : 'rgba(255,95,126,.1)';
-        const fg = t.amount >= 0 ? 'var(--green)' : 'var(--red)';
-        return `<div class="txn-row">
-          <div class="txn-avatar" style="background:${bg};color:${fg};">${avatarInitials(t.payee)}</div>
-          <div class="txn-info">
-            <div class="txn-payee">${t.payee}</div>
-            <div class="txn-cat">${showAccount ? acctLabel(t.account)+' · ' : ''}${t.category}${t.remarks ? ' · '+t.remarks : ''}</div>
-          </div>
-          <div>
-            <div class="txn-amount ${t.amount>=0?'pos':'neg'}">${t.amount>=0?'+':''}${fmtNum(t.amount)}</div>
-          </div>
-        </div>`;
-      }).join('');
-  }).join('');
-}
-
-// ════════════════════════════════════════════════════
-// REPORTS
-// ════════════════════════════════════════════════════
-let catChartInst=null, monthlyChartInst=null, yearlyChartInst=null, reportDropdownsInited=false;
-
-function initReportDropdowns() {
-  if (reportDropdownsInited) return;
-  reportDropdownsInited = true;
-  allYears.forEach(y => { ['rcat-year'].forEach(id => { document.getElementById(id).add(new Option(y,y)); }); });
-  allAccounts.forEach(a => { ['rcat-acct','rmonth-acct','ryear-acct'].forEach(id => { document.getElementById(id).add(new Option(acctLabel(a),a)); }); });
-  allYears.forEach(y => { document.getElementById('rmonth-year').add(new Option(y,y)); });
-  document.getElementById('rmonth-year').value = allYears[0]||'';
-}
-
-function setReportTab(t) {
-  ['cat','monthly','yearly'].forEach(x => {
-    document.getElementById('rt-'+x).classList.toggle('active', x===t);
-    document.getElementById('rp-'+x).style.display = x===t?'block':'none';
-  });
-  initReportDropdowns();
-  if (t==='cat') renderCatReport();
-  if (t==='monthly') renderMonthlyReport();
-  if (t==='yearly') renderYearlyReport();
-}
-
-function renderCatReport() {
-  initReportDropdowns();
-  const year = document.getElementById('rcat-year').value;
-  const month = document.getElementById('rcat-month').value;
-  const acct = document.getElementById('rcat-acct').value;
-  let txns = allTransactions.filter(t => t.amount < 0 && !isTransfer(t.category));
-  if (year) txns = txns.filter(t => t.date.startsWith(year));
-  if (month) txns = txns.filter(t => t.date.slice(5,7)===month);
-  if (acct) txns = txns.filter(t => t.account===acct);
-  const byCat = {};
-  txns.forEach(t => { byCat[t.category]=(byCat[t.category]||0)+Math.abs(t.amount); });
-  const sorted = Object.entries(byCat).sort((a,b) => b[1]-a[1]);
-  const total = sorted.reduce((s,e) => s+e[1],0);
-  const mFilter = year && month ? year+'-'+month : '';
-  if (catChartInst) catChartInst.destroy();
-  catChartInst = new Chart(document.getElementById('catChart'), {
-    type: 'doughnut',
-    data: { labels: sorted.slice(0,10).map(e=>e[0]), datasets: [{ data: sorted.slice(0,10).map(e=>e[1]), backgroundColor: CAT_COLORS, borderWidth: 0 }] },
-    options: { responsive:true, maintainAspectRatio:false, cutout:'55%', plugins: { legend: { position:'bottom', labels: { color:'#9998b8', font:{size:10}, boxWidth:10, padding:6 } } } }
-  });
-  document.getElementById('rp-cat-list').innerHTML = sorted.map(([cat,amt],i) => `
-    <div class="cat-item" onclick="openCatDetail('${cat.replace(/'/g,"\'").replace(/"/g,'&quot;')}','${mFilter}')">
-      <div class="cat-dot" style="background:${catColor(i)};"></div>
-      <div style="flex:1;min-width:0;">
-        <div class="cat-item-name">${cat}</div>
-        <div style="margin-top:4px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;"><div style="height:100%;width:${(amt/sorted[0][1]*100).toFixed(1)}%;background:${catColor(i)};border-radius:2px;"></div></div>
-      </div>
-      <div class="cat-item-right">
-        <div class="cat-item-amount">-${fmtNum(amt)}</div>
-        <div class="cat-item-pct">${(amt/total*100).toFixed(1)}%</div>
-      </div>
-      <svg class="cat-chevron" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-    </div>`).join('') || '<div class="empty-state"><div class="empty-state-text">No expense data</div></div>';
-}
-
-function renderMonthlyReport() {
-  initReportDropdowns();
-  const year = document.getElementById('rmonth-year').value;
-  const acct = document.getElementById('rmonth-acct').value;
-  let txns = acct ? allTransactions.filter(t=>t.account===acct) : allTransactions;
-  if (year) txns = txns.filter(t=>t.date.startsWith(year));
-  const byM = {};
-  txns.forEach(t => { const m=t.date.slice(0,7); if(!byM[m]) byM[m]={exp:0,inc:0}; if(t.amount<0) byM[m].exp+=Math.abs(t.amount); else byM[m].inc+=t.amount; });
-  const months = Object.keys(byM).sort();
-  const labels = months.map(m => { const [y,mo]=m.split('-'); return MONTH_NAMES[parseInt(mo)-1]+' '+y.slice(2); });
-  if (monthlyChartInst) monthlyChartInst.destroy();
-  monthlyChartInst = new Chart(document.getElementById('monthlyChart'), {
-    type:'bar', data:{ labels, datasets:[{ label:'Expense', data:months.map(m=>byM[m].exp), backgroundColor:'rgba(255,95,126,.7)', borderRadius:4 },{ label:'Income', data:months.map(m=>byM[m].inc), backgroundColor:'rgba(79,255,176,.7)', borderRadius:4 }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#9998b8',font:{size:10}}}}, scales:{ x:{ticks:{color:'#6b6a8a',font:{size:9},maxRotation:45},grid:{color:'#2a2a3d'}}, y:{ticks:{color:'#6b6a8a',font:{size:9},callback:v=>fmtNum(v)},grid:{color:'#2a2a3d'}} } }
-  });
-  document.getElementById('rp-monthly-table').innerHTML = months.reverse().map(m => {
-    const exp=byM[m].exp,inc=byM[m].inc,net=inc-exp;
-    const [y,mo]=m.split('-');
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
-      <div style="font-size:14px;font-weight:500;">${MONTH_NAMES[parseInt(mo)-1]} ${y}</div>
-      <div style="text-align:right;">
-        <div class="font-mono" style="font-size:12px;color:var(--green);">+${fmtNum(inc)}</div>
-        <div class="font-mono" style="font-size:12px;color:var(--red);">-${fmtNum(exp)}</div>
-        <div class="font-mono" style="font-size:11px;color:${net>=0?'var(--green)':'var(--red)'};">${net>=0?'+':''}${fmtNum(net)}</div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function renderYearlyReport() {
-  initReportDropdowns();
-  const acct = document.getElementById('ryear-acct').value;
-  let txns = acct ? allTransactions.filter(t=>t.account===acct) : allTransactions;
-  const byY={};
-  txns.forEach(t => { const y=t.date.slice(0,4); if(!byY[y]) byY[y]={exp:0,inc:0}; if(t.amount<0) byY[y].exp+=Math.abs(t.amount); else byY[y].inc+=t.amount; });
-  const years=Object.keys(byY).sort();
-  if (yearlyChartInst) yearlyChartInst.destroy();
-  yearlyChartInst = new Chart(document.getElementById('yearlyChart'), {
-    type:'bar', data:{ labels:years, datasets:[{ label:'Expense', data:years.map(y=>byY[y].exp), backgroundColor:'rgba(255,95,126,.7)', borderRadius:4 },{ label:'Income', data:years.map(y=>byY[y].inc), backgroundColor:'rgba(79,255,176,.7)', borderRadius:4 }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#9998b8',font:{size:10}}}}, scales:{ x:{ticks:{color:'#6b6a8a',font:{size:11}},grid:{color:'#2a2a3d'}}, y:{ticks:{color:'#6b6a8a',font:{size:9},callback:v=>fmtNum(v)},grid:{color:'#2a2a3d'}} } }
-  });
-  document.getElementById('rp-yearly-table').innerHTML = years.reverse().map(y => {
-    const exp=byY[y].exp,inc=byY[y].inc,net=inc-exp;
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border);">
-      <div style="font-size:16px;font-weight:700;">${y}</div>
-      <div style="text-align:right;">
-        <div class="font-mono" style="font-size:13px;color:var(--green);">+${fmtNum(inc)}</div>
-        <div class="font-mono" style="font-size:13px;color:var(--red);">-${fmtNum(exp)}</div>
-        <div class="font-mono" style="font-size:12px;color:${net>=0?'var(--green)':'var(--red)');}">Net: ${net>=0?'+':''}${fmtNum(net)}</div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ════════════════════════════════════════════════════
-// DRAWERS
-// ════════════════════════════════════════════════════
-function openDrawer(id) {
-  const el = document.getElementById(id);
-  el.style.display = 'flex';
-  requestAnimationFrame(() => el.classList.add('open'));
-}
-function closeDrawer(id) {
-  const el = document.getElementById(id);
-  el.classList.remove('open');
-  setTimeout(() => { el.style.display='none'; }, 300);
-}
-
-function openAddDrawer() {
-  document.getElementById('add-date').value = new Date().toISOString().slice(0,10);
-  document.getElementById('add-amount').value = '';
-  document.getElementById('add-payee').value = '';
-  document.getElementById('add-remarks').value = '';
-  openDrawer('add-drawer-overlay');
-}
-function submitAdd() {
-  const acct = document.getElementById('add-account').value;
-  const date = document.getElementById('add-date').value;
-  const amount = parseFloat(document.getElementById('add-amount').value);
-  const payee = document.getElementById('add-payee').value.trim();
-  const cat = document.getElementById('add-cat').value || 'Others';
-  const remarks = document.getElementById('add-remarks').value.trim();
-  if (!acct||!date||isNaN(amount)||!payee) { showToast('Fill all required fields'); return; }
-  const txn = {payee,category:cat,amount,date,remarks,account:acct};
-  allTransactions.push(txn);
-  allTransactions.sort((a,b)=>b.date.localeCompare(a.date));
-  RAW_DATA[acct].push({payee,category:cat,amount,date,remarks});
-  accountBalances[acct]=(accountBalances[acct]||0)+amount;
-  closeDrawer('add-drawer-overlay');
-  showToast('✅ Transaction added!');
-  renderDashContent();
-}
-
-function openTransferDrawer() {
-  document.getElementById('tf-date').value = new Date().toISOString().slice(0,10);
-  document.getElementById('tf-amount').value = '';
-  document.getElementById('tf-remarks').value = '';
-  openDrawer('tf-drawer-overlay');
-}
-function submitTransfer() {
-  const from=document.getElementById('tf-from').value;
-  const to=document.getElementById('tf-to').value;
-  const date=document.getElementById('tf-date').value;
-  const amount=parseFloat(document.getElementById('tf-amount').value);
-  const remarks=document.getElementById('tf-remarks').value.trim();
-  if (from===to) { showToast('Source and destination must differ'); return; }
-  if (!date||isNaN(amount)||amount<=0) { showToast('Enter valid date and amount'); return; }
-  const fromLabel=acctLabel(from), toLabel=acctLabel(to);
-  const outT={payee:'Transfer to '+toLabel,category:'Transfer (Outward)',amount:-amount,date,remarks,account:from};
-  const inT={payee:'Transfer from '+fromLabel,category:'Transfer (Inward)',amount,date,remarks,account:to};
-  allTransactions.push(outT,inT);
-  allTransactions.sort((a,b)=>b.date.localeCompare(a.date));
-  RAW_DATA[from].push({...outT}); RAW_DATA[to].push({...inT});
-  accountBalances[from]-=amount; accountBalances[to]+=amount;
-  closeDrawer('tf-drawer-overlay');
-  showToast(`✅ Transferred Rp ${fmtFull(amount)}`);
-  renderDashContent();
-}
-
-// ════════════════════════════════════════════════════
-// TOAST
-// ════════════════════════════════════════════════════
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2500);
-}
 
 // ════════════════════════════════════════════════════
 // BOOT
 // ════════════════════════════════════════════════════
-window.addEventListener('load', () => {
-  initGoogleAuth();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootApp);
+} else {
+  bootApp();
+}
+
+function bootApp() {
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js', {scope: './'})
+      .then(function(r) { console.log('SW ok'); })
+      .catch(function(e) { console.warn('SW err', e); });
+  }
+
+  // Init Google auth if available
+  try {
+    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredential,
+        auto_select: false,
+      });
+    }
+  } catch(e) { console.warn('Google init err:', e); }
+
+  // Check if already logged in
   checkAuth();
-});
+}
 </script>
 </body>
 </html>
