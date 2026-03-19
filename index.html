@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0f">
-<title>Spenza v2.7</title>
+<title>Spenza v2.8</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <script src="https://accounts.google.com/gsi/client" async></script>
@@ -279,7 +279,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
   <!-- DASHBOARD -->
   <div class="page active" id="pg-dashboard">
     <div class="hdr" style="border-bottom:1px solid var(--bdr);">
-      <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.7</span></div>
+      <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.8</span></div>
       <div style="display:flex;gap:8px;align-items:center;">
         <div class="ibtn" onclick="openTfDrawer()"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
         <div class="uchip" onclick="toggleUMenu()" id="uchip"><span class="uchip-n" id="chip-n">User</span><div class="uav" id="chip-av">U</div></div>
@@ -402,7 +402,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
           <div style="font-size:16px;font-weight:700;" id="more-name">User</div>
           <div style="font-size:12px;color:var(--txm);margin-top:2px;" id="more-email"></div>
           <div style="font-size:11px;color:var(--txm);margin-top:8px;" id="more-count"></div>
-          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.7</div>
+          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.8</div>
         </div>
       </div>
       <div class="mitem" onclick="openAddDrawer()"><div class="mico" style="background:rgba(124,110,255,.15);">➕</div><div class="mlbl">Add Transaction</div><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--txm);"><path d="M9 18l6-6-6-6"/></svg></div>
@@ -1389,22 +1389,17 @@ function filterTxnList() {
 }
 
 function renderTxnListBody(txns) {
-  var html = txns.slice(0, 100).map(function(t) {
-    var bg = t.amount>=0 ? 'rgba(79,255,176,.1)' : 'rgba(255,95,126,.1)';
-    var fg = t.amount>=0 ? 'var(--green)' : 'var(--red)';
-    return '<div class="trow">'+
-      '<div class="tav" style="background:'+bg+';color:'+fg+';">'+ini(t.payee)+'</div>'+
-      '<div class="tinfo">'+
-        '<div class="tpay">'+t.payee+'</div>'+
-        '<div class="tcat">'+t.date+' · '+al(t.account)+'</div>'+
-        '<div class="tcat">'+t.category+(t.remarks?' · '+t.remarks:'')+'</div>'+
-      '</div>'+
-      '<div class="tamt '+(t.amount>=0?'p':'n')+'">'+(t.amount>=0?'+':'')+fn(t.amount)+'</div>'+
-    '</div>';
-  }).join('');
-  if (txns.length > 100) html += '<div style="text-align:center;padding:16px;font-size:12px;color:var(--txm);">Showing 100 of '+txns.length+' transactions. Use search to filter.</div>';
-  if (!html) html = '<div class="empty"><div class="empty-ico">📭</div><div>No transactions</div></div>';
-  document.getElementById('txnlist-body').innerHTML = html;
+  var body = document.getElementById('txnlist-body');
+  if (!txns.length) {
+    body.innerHTML = '<div class="empty"><div class="empty-ico">📭</div><div>No transactions</div></div>';
+    return;
+  }
+  // Use renderGrp so every row gets openTxnDetail onclick
+  var slice = txns.slice(0, 150);
+  body.innerHTML = renderGrp(grpByDate(slice), true);
+  if (txns.length > 150) {
+    body.innerHTML += '<div style="text-align:center;padding:12px;font-size:12px;color:var(--txm);">+ ' + (txns.length - 150) + ' more — use search to filter</div>';
+  }
 }
 
 // ── BOOT ──────────────────────────────────────────
