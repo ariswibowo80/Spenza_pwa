@@ -2,12 +2,12 @@
   "name": "Spenza - Personal Finance",
   "short_name": "Spenza",
   "description": "Personal finance tracker with multi-account support",
-  "start_url": "/index.html",
+  "start_url": "/Spenza_pwa/index.html",
+  "scope": "/Spenza_pwa/",
   "display": "standalone",
   "background_color": "#0a0a0f",
   "theme_color": "#7c6eff",
   "orientation": "portrait-primary",
-  "scope": "/",
   "lang": "id",
   "categories": ["finance", "productivity"],
   "icons": [
@@ -24,20 +24,17 @@
       "purpose": "any maskable"
     }
   ],
-  "screenshots": [],
   "shortcuts": [
-    {
-      "name": "Add Transaction",
-      "short_name": "Add",
-      "description": "Quickly add a new transaction",
-      "url": "/index.html?action=add",
-      "icons": [{ "src": "icons/icon-192.svg", "sizes": "192x192" }]
-    },
     {
       "name": "Dashboard",
       "short_name": "Home",
-      "description": "View your finance dashboard",
-      "url": "/index.html",
+      "url": "/Spenza_pwa/index.html",
+      "icons": [{ "src": "icons/icon-192.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Add Transaction",
+      "short_name": "Add",
+      "url": "/Spenza_pwa/index.html?action=add",
       "icons": [{ "src": "icons/icon-192.svg", "sizes": "192x192" }]
     }
   ]
