@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0f">
-<title>Spenza v2.10</title>
+<title>Spenza v2.11</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <script src="https://accounts.google.com/gsi/client" async></script>
@@ -279,7 +279,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
   <!-- DASHBOARD -->
   <div class="page active" id="pg-dashboard">
     <div class="hdr" style="border-bottom:1px solid var(--bdr);">
-      <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.10</span></div>
+      <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.11</span></div>
       <div style="display:flex;gap:8px;align-items:center;">
         <div class="ibtn" onclick="openTfDrawer()"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
         <div class="uchip" onclick="toggleUMenu()" id="uchip"><span class="uchip-n" id="chip-n">User</span><div class="uav" id="chip-av">U</div></div>
@@ -378,6 +378,33 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
           <select id="rm-ac" onchange="renderMonR()" class="fi" style="flex:1;padding:8px 12px;font-size:13px;"><option value="">All Accounts</option></select>
         </div>
         <div class="tcard" style="margin:0 20px 16px;"><div class="ctitle">Monthly Income vs Expense</div><div class="cwrap-md"><canvas id="monthlyChart"></canvas></div></div>
+
+        <!-- Account contribution pie chart for selected month -->
+        <div style="padding:0 20px 14px;">
+          <div style="font-size:13px;font-weight:600;color:var(--txd);margin-bottom:10px;">Account Contribution by Month</div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <select id="rm-pie-mo" onchange="renderMonPie()" class="fi" style="flex:1;padding:8px 12px;font-size:13px;">
+              <option value="">Select Month…</option>
+              <option value="01">January</option><option value="02">February</option><option value="03">March</option>
+              <option value="04">April</option><option value="05">May</option><option value="06">June</option>
+              <option value="07">July</option><option value="08">August</option><option value="09">September</option>
+              <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+            </select>
+            <select id="rm-pie-type" onchange="renderMonPie()" class="fi" style="flex:1;padding:8px 12px;font-size:13px;">
+              <option value="expense">Expenses</option>
+              <option value="income">Income</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+          <div id="rm-pie-wrap" style="display:none;">
+            <div class="tcard" style="margin:0 0 14px;">
+              <div class="ctitle" id="rm-pie-title">Account Contribution</div>
+              <div style="position:relative;height:220px;"><canvas id="monPieChart"></canvas></div>
+            </div>
+            <div id="rm-pie-list"></div>
+          </div>
+        </div>
+
         <div id="rm-tbl" style="padding:0 20px;"></div>
       </div>
       <div id="rp-yearly" style="display:none;">
@@ -402,7 +429,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
           <div style="font-size:16px;font-weight:700;" id="more-name">User</div>
           <div style="font-size:12px;color:var(--txm);margin-top:2px;" id="more-email"></div>
           <div style="font-size:11px;color:var(--txm);margin-top:8px;" id="more-count"></div>
-          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.10</div>
+          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.11</div>
         </div>
       </div>
       <div class="mitem" onclick="openAddDrawer()"><div class="mico" style="background:rgba(124,110,255,.15);">➕</div><div class="mlbl">Add Transaction</div><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--txm);"><path d="M9 18l6-6-6-6"/></svg></div>
@@ -1033,7 +1060,7 @@ function setRT(t) {
     document.getElementById('rp-'+x).style.display=x===t?'block':'none';
   });
   if (t==='cat') renderCatR();
-  if (t==='monthly') renderMonR();
+  if (t==='monthly') { renderMonR(); setTimeout(renderMonPie, 50); }
   if (t==='yearly') renderYrR();
 }
 function renderCatR() {
@@ -1066,6 +1093,12 @@ function renderCatR() {
   }).join('')||'<div class="empty"><div>No expense data</div></div>';
 }
 function renderMonR() {
+  // Auto-select current/latest month in the pie selector if not set
+  var pieEl = document.getElementById('rm-pie-mo');
+  if (pieEl && !pieEl.value) {
+    var now = new Date();
+    pieEl.value = String(now.getMonth()+1).padStart(2,'0');
+  }
   var yr=document.getElementById('rm-yr').value, ac=document.getElementById('rm-ac').value;
   var txns=ac?allTxns.filter(function(t){return t.account===ac;}):allTxns;
   if (yr) txns=txns.filter(function(t){return t.date.indexOf(yr)===0;});
@@ -1088,6 +1121,71 @@ function renderMonR() {
       '<div style="font-size:11px;color:'+(n>=0?'var(--green)':'var(--red)')+';">'+(n>=0?'+':'')+fn(n)+'</div></div></div>';
   }).join('');
 }
+// ── MONTHLY PIE CHART (account contribution) ────
+var monPieCI = null;
+function renderMonPie() {
+  var mo   = document.getElementById('rm-pie-mo').value;
+  var yr   = document.getElementById('rm-yr').value || new Date().getFullYear().toString();
+  var type = document.getElementById('rm-pie-type').value;
+  var wrap = document.getElementById('rm-pie-wrap');
+
+  if (!mo) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  var monthKey = yr + '-' + mo;
+  var txns = allTxns.filter(function(t){ return t.date.slice(0,7) === monthKey; });
+
+  if (type === 'expense') txns = txns.filter(function(t){ return t.amount < 0 && !isTf(t.category); });
+  else if (type === 'income') txns = txns.filter(function(t){ return t.amount > 0 && !isTf(t.category); });
+
+  // Group by account
+  var byAcct = {};
+  txns.forEach(function(t){
+    if (!byAcct[t.account]) byAcct[t.account] = 0;
+    byAcct[t.account] += Math.abs(t.amount);
+  });
+
+  var sorted = Object.entries(byAcct).sort(function(a,b){ return b[1]-a[1]; });
+  var total  = sorted.reduce(function(s,e){ return s+e[1]; }, 0);
+  var typeLabel = type === 'expense' ? 'Expenses' : type === 'income' ? 'Income' : 'All';
+
+  var MN_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('rm-pie-title').textContent = typeLabel + ' · ' + MN_FULL[parseInt(mo)-1] + ' ' + yr;
+
+  if (monPieCI) monPieCI.destroy();
+  monPieCI = new Chart(document.getElementById('monPieChart'), {
+    type: 'doughnut',
+    data: {
+      labels: sorted.map(function(e){ return al(e[0]); }),
+      datasets: [{ data: sorted.map(function(e){ return e[1]; }), backgroundColor: CC, borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '55%',
+      plugins: { legend: { position: 'bottom', labels: { color: '#9998b8', font: { size: 10 }, boxWidth: 10, padding: 6 } } }
+    }
+  });
+
+  // Account breakdown bars
+  document.getElementById('rm-pie-list').innerHTML = sorted.map(function(e, i) {
+    var pct = total > 0 ? (e[1]/total*100).toFixed(1) : 0;
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bdr);" onclick="openAcctDrawer(\''+e[0]+'\')" style="cursor:pointer;">' +
+      '<div style="width:10px;height:10px;border-radius:50%;background:'+CC[i%CC.length]+';flex-shrink:0;"></div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+al(e[0])+'</div>' +
+        '<div style="margin-top:3px;height:3px;background:var(--bdr);border-radius:2px;overflow:hidden;">' +
+          '<div style="height:100%;width:'+pct+'%;background:'+CC[i%CC.length]+';border-radius:2px;"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="text-align:right;flex-shrink:0;">' +
+        '<div style="font-family:JetBrains Mono,monospace;font-size:13px;font-weight:600;color:'+(type==='income'?'var(--green)':'var(--red)')+';">' +
+          (type==='income'?'+':'-')+fn(e[1]) +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--txm);">'+pct+'%</div>' +
+      '</div>' +
+    '</div>';
+  }).join('') || '<div class="empty"><div class="empty-ico">📭</div><div>No data</div></div>';
+}
+
 function renderYrR() {
   var ac=document.getElementById('ry-ac').value;
   var txns=ac?allTxns.filter(function(t){return t.account===ac;}):allTxns;
