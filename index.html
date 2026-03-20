@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0f">
-<title>Spenza v2.16</title>
+<title>Spenza v2.17</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <script src="https://accounts.google.com/gsi/client" async></script>
@@ -279,7 +279,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
   <!-- DASHBOARD -->
   <div class="page active" id="pg-dashboard">
     <div class="hdr" style="border-bottom:1px solid var(--bdr);">
-      <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.16</span></div>
+      <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.17</span></div>
       <div style="display:flex;gap:8px;align-items:center;">
         <div class="ibtn" onclick="openTfDrawer()"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
         <div class="ibtn" onclick="openImportDrawer()" title="Import CSV"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
@@ -430,7 +430,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
           <div style="font-size:16px;font-weight:700;" id="more-name">User</div>
           <div style="font-size:12px;color:var(--txm);margin-top:2px;" id="more-email"></div>
           <div style="font-size:11px;color:var(--txm);margin-top:8px;" id="more-count"></div>
-          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.16</div>
+          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.17</div>
         </div>
       </div>
       <div class="mitem" onclick="openAddDrawer()"><div class="mico" style="background:rgba(124,110,255,.15);">➕</div><div class="mlbl">Add Transaction</div><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--txm);"><path d="M9 18l6-6-6-6"/></svg></div>
@@ -635,15 +635,40 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
 <div class="dover" id="txnlist-dover" onclick="closeDrawer('txnlist-dover')">
   <div class="drawer" onclick="event.stopPropagation()">
     <div class="dhandle"></div>
-    <div style="padding:0 20px 4px;display:flex;align-items:center;justify-content:space-between;">
+    <div style="padding:0 20px 8px;display:flex;align-items:center;justify-content:space-between;">
       <div class="dtitle" style="padding:0;margin:0;" id="txnlist-title"></div>
       <div id="txnlist-total" style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;"></div>
     </div>
-    <div class="sbar" style="margin:12px 20px 8px;">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--txm);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input type="text" id="txnlist-search" placeholder="Search…" oninput="filterTxnList()" style="background:none;border:none;color:var(--tx);font-family:'Outfit',sans-serif;font-size:14px;outline:none;flex:1;">
+
+    <!-- View toggle tabs: Chart / Transactions -->
+    <div id="txnlist-tabs" style="display:none;padding:0 20px 10px;display:flex;gap:8px;">
+      <div id="tlt-chart" onclick="setTxnListView('chart')"
+        style="flex:1;padding:7px;text-align:center;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;background:rgba(124,110,255,.15);border:1px solid var(--ac);color:var(--ac);">
+        📊 By Category
+      </div>
+      <div id="tlt-list" onclick="setTxnListView('list')"
+        style="flex:1;padding:7px;text-align:center;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;background:var(--card);border:1px solid var(--bdr);color:var(--txm);">
+        📋 Transactions
+      </div>
     </div>
-    <div id="txnlist-body" style="max-height:60vh;overflow-y:auto;"></div>
+
+    <!-- Donut chart view -->
+    <div id="txnlist-chart-view" style="display:none;">
+      <div style="position:relative;height:220px;margin:0 20px 10px;">
+        <canvas id="txnlist-donut"></canvas>
+      </div>
+      <!-- Category bars — tappable -->
+      <div id="txnlist-cat-bars" style="max-height:38vh;overflow-y:auto;padding:0 20px 8px;"></div>
+    </div>
+
+    <!-- Transaction list view -->
+    <div id="txnlist-list-view">
+      <div class="sbar" style="margin:0 20px 8px;">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--txm);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="txnlist-search" placeholder="Search…" oninput="filterTxnList()" style="background:none;border:none;color:var(--tx);font-family:'Outfit',sans-serif;font-size:14px;outline:none;flex:1;">
+      </div>
+      <div id="txnlist-body" style="max-height:55vh;overflow-y:auto;"></div>
+    </div>
   </div>
 </div>
 
@@ -1920,6 +1945,10 @@ function impConfirm() {
 
 // ── TXN LIST DRAWER ──────────────────────────────
 var txnListAll = [];
+var txnListType = '';
+var txnListMonth = '';
+var txnListDonutCI = null;
+
 function openTxnList(type, month, catFilter) {
   var txns = month ? allTxns.filter(function(t){ return t.date.indexOf(month)===0; }) : allTxns;
   var title, colorStyle;
@@ -1937,13 +1966,104 @@ function openTxnList(type, month, catFilter) {
   }
   var lbl = month ? (function(){ var p=month.split('-'); return MN[parseInt(p[1])-1]+' '+p[0]; })() : 'All Time';
   txnListAll = txns.sort(function(a,b){ return b.date>a.date?1:-1; });
+  txnListType  = type;
+  txnListMonth = month || '';
+
   document.getElementById('txnlist-title').textContent = title + ' · ' + lbl;
   var total = txns.reduce(function(s,t){ return s+t.amount; },0);
   document.getElementById('txnlist-total').style.cssText = colorStyle;
-  document.getElementById('txnlist-total').textContent = (total>=0?'+':'')+fn(total);
+  document.getElementById('txnlist-total').textContent = (total>=0?'+':'')+fn(Math.abs(total));
   document.getElementById('txnlist-search').value = '';
-  renderTxnListBody(txnListAll);
+
+  var showChart = (type === 'income' || type === 'expense');
+  var tabs = document.getElementById('txnlist-tabs');
+  tabs.style.display = showChart ? 'flex' : 'none';
+
+  if (showChart) {
+    setTxnListView('chart');
+  } else {
+    setTxnListView('list');
+  }
   openDrawer('txnlist-dover');
+}
+
+function setTxnListView(view) {
+  var chartView = document.getElementById('txnlist-chart-view');
+  var listView  = document.getElementById('txnlist-list-view');
+  var tabChart  = document.getElementById('tlt-chart');
+  var tabList   = document.getElementById('tlt-list');
+  var activeStyle   = 'flex:1;padding:7px;text-align:center;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;background:rgba(124,110,255,.15);border:1px solid var(--ac);color:var(--ac);';
+  var inactiveStyle = 'flex:1;padding:7px;text-align:center;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;background:var(--card);border:1px solid var(--bdr);color:var(--txm);';
+  if (view === 'chart') {
+    chartView.style.display = 'block';
+    listView.style.display  = 'none';
+    tabChart.style.cssText  = activeStyle;
+    tabList.style.cssText   = inactiveStyle;
+    renderTxnListDonut();
+  } else {
+    chartView.style.display = 'none';
+    listView.style.display  = 'block';
+    tabChart.style.cssText  = inactiveStyle;
+    tabList.style.cssText   = activeStyle;
+    renderTxnListBody(txnListAll);
+  }
+}
+
+function renderTxnListDonut() {
+  var txns = txnListAll;
+  // Group by category
+  var byCat = {};
+  txns.forEach(function(t){ byCat[t.category] = (byCat[t.category]||0) + Math.abs(t.amount); });
+  var sorted = Object.entries(byCat).sort(function(a,b){ return b[1]-a[1]; });
+  var total  = sorted.reduce(function(s,e){ return s+e[1]; }, 0);
+  var isIncome = txnListType === 'income';
+  var centerColor = isIncome ? '#4fffb0' : '#ff5f7e';
+  var centerPrefix = isIncome ? '+' : '-';
+
+  if (txnListDonutCI) txnListDonutCI.destroy();
+  txnListDonutCI = new Chart(document.getElementById('txnlist-donut'), {
+    type: 'doughnut',
+    data: {
+      labels: sorted.map(function(e){ return e[0]; }),
+      datasets: [{ data: sorted.map(function(e){ return e[1]; }), backgroundColor: CC, borderWidth: 2, borderColor: '#1a1a24' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: {
+        legend: { display: false },
+        centerText: { text: centerPrefix + 'Rp ' + fn(total), subLabel: txnListType === 'income' ? 'Income' : 'Expenses', color: centerColor },
+      },
+      onClick: function(evt, elements) {
+        if (elements && elements.length > 0) {
+          var idx = elements[0].index;
+          var cat = sorted[idx][0];
+          // Close this drawer, open category detail
+          closeDrawer('txnlist-dover');
+          setTimeout(function(){ openCD(cat, txnListMonth); }, 320);
+        }
+      }
+    }
+  });
+
+  // Category bars
+  document.getElementById('txnlist-cat-bars').innerHTML = sorted.map(function(e, i) {
+    var pct = total > 0 ? (e[1]/total*100).toFixed(1) : 0;
+    var color = CC[i % CC.length];
+    return '<div onclick="(function(){closeDrawer('txnlist-dover');setTimeout(function(){openCD(''+e[0].replace(/'/g,"\\'")+'',' +
+      (txnListMonth ? '''+txnListMonth+''' : '''') + ');},320);})()" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bdr);cursor:pointer;">' +
+      '<div style="width:10px;height:10px;border-radius:50%;background:'+color+';flex-shrink:0;"></div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:13px;font-weight:500;">'+e[0]+'</div>' +
+        '<div style="margin-top:3px;height:3px;background:var(--bdr);border-radius:2px;overflow:hidden;">' +
+          '<div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:2px;"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="text-align:right;flex-shrink:0;">' +
+        '<div style="font-family:JetBrains Mono,monospace;font-size:12px;font-weight:600;color:'+(isIncome?'var(--green)':'var(--red)')+';">'+(isIncome?'+':'-')+fn(e[1])+'</div>' +
+        '<div style="font-size:11px;color:var(--txm);">'+pct+'% · '+txns.filter(function(t){return t.category===e[0];}).length+' txns</div>' +
+      '</div>' +
+    '</div>';
+  }).join('') || '<div class="empty"><div>No data</div></div>';
 }
 
 function filterTxnList() {
