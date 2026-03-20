@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0f">
-<title>Spenza v2.13</title>
+<title>Spenza v2.14</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <script src="https://accounts.google.com/gsi/client" async></script>
@@ -279,7 +279,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
   <!-- DASHBOARD -->
   <div class="page active" id="pg-dashboard">
     <div class="hdr" style="border-bottom:1px solid var(--bdr);">
-      <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.13</span></div>
+      <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.14</span></div>
       <div style="display:flex;gap:8px;align-items:center;">
         <div class="ibtn" onclick="openTfDrawer()"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
         <div class="uchip" onclick="toggleUMenu()" id="uchip"><span class="uchip-n" id="chip-n">User</span><div class="uav" id="chip-av">U</div></div>
@@ -429,11 +429,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
           <div style="font-size:16px;font-weight:700;" id="more-name">User</div>
           <div style="font-size:12px;color:var(--txm);margin-top:2px;" id="more-email"></div>
           <div style="font-size:11px;color:var(--txm);margin-top:8px;" id="more-count"></div>
-          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.13</div>
+          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.14</div>
         </div>
       </div>
       <div class="mitem" onclick="openAddDrawer()"><div class="mico" style="background:rgba(124,110,255,.15);">➕</div><div class="mlbl">Add Transaction</div><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--txm);"><path d="M9 18l6-6-6-6"/></svg></div>
       <div class="mitem" onclick="openTfDrawer()"><div class="mico" style="background:rgba(255,110,156,.15);">🔁</div><div class="mlbl">Transfer</div><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--txm);"><path d="M9 18l6-6-6-6"/></svg></div>
+      <div class="mitem" onclick="openImportDrawer()"><div class="mico" style="background:rgba(110,255,232,.1);">📥</div><div class="mlbl">Import CSV</div><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--txm);"><path d="M9 18l6-6-6-6"/></svg></div>
       <div class="mitem" onclick="signOut()" style="margin-top:8px;"><div class="mico" style="background:rgba(255,95,126,.1);">🚪</div><div class="mlbl" style="color:var(--red);">Sign Out</div></div>
     </div>
   </div>
@@ -503,6 +504,98 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
       <div class="factions">
         <button class="btn btng" onclick="cancelEdit()">Cancel</button>
         <button class="btn btnp" onclick="saveEdit()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT CSV DRAWER -->
+<div class="dover" id="import-dover" onclick="closeDrawer('import-dover')">
+  <div class="drawer" onclick="event.stopPropagation()" style="max-height:95vh;">
+    <div class="dhandle"></div>
+    <div class="dtitle">Import CSV</div>
+
+    <!-- STEP 1: Upload -->
+    <div id="imp-step1">
+      <div style="padding:0 20px 16px;">
+        <div style="background:var(--card);border:2px dashed var(--bdr);border-radius:14px;padding:28px 20px;text-align:center;cursor:pointer;" onclick="document.getElementById('csv-file-input').click();" id="imp-dropzone">
+          <div style="font-size:32px;margin-bottom:10px;">📂</div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Tap to choose CSV file</div>
+          <div style="font-size:12px;color:var(--txm);">Supports comma or semicolon delimited</div>
+        </div>
+        <input type="file" id="csv-file-input" accept=".csv,.txt" style="display:none;" onchange="handleCSVFile(this)">
+        <div style="margin-top:14px;background:rgba(110,255,232,.06);border:1px solid rgba(110,255,232,.2);border-radius:12px;padding:14px 16px;">
+          <div style="font-size:12px;font-weight:600;color:var(--accent3,#6effe8);margin-bottom:6px;">Expected format (Spenza native):</div>
+          <div style="font-size:11px;color:var(--txm);font-family:JetBrains Mono,monospace;line-height:1.8;">
+            PAYEE_ITEM_DESC;CATEGORY;AMOUNT;STATUS;TRAN_DATE;REMARKS<br>
+            "Indomaret";"Food";-50000,00;"U";"2026-01-15";""
+          </div>
+          <div style="font-size:11px;color:var(--txm);margin-top:8px;">Or any CSV — you'll map the columns in the next step.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: Map columns & preview -->
+    <div id="imp-step2" style="display:none;">
+      <div style="padding:0 20px 10px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Map Columns</div>
+
+        <div class="fg" style="margin:0 0 10px;">
+          <label class="flbl">Target Account</label>
+          <select class="fi" id="imp-account"></select>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+          <div>
+            <label class="flbl" style="font-size:10px;">Date Column</label>
+            <select class="fi" style="padding:8px 10px;font-size:12px;" id="imp-col-date"></select>
+          </div>
+          <div>
+            <label class="flbl" style="font-size:10px;">Amount Column</label>
+            <select class="fi" style="padding:8px 10px;font-size:12px;" id="imp-col-amount"></select>
+          </div>
+          <div>
+            <label class="flbl" style="font-size:10px;">Payee Column</label>
+            <select class="fi" style="padding:8px 10px;font-size:12px;" id="imp-col-payee"></select>
+          </div>
+          <div>
+            <label class="flbl" style="font-size:10px;">Category Column</label>
+            <select class="fi" style="padding:8px 10px;font-size:12px;" id="imp-col-cat"><option value="">(none)</option></select>
+          </div>
+          <div>
+            <label class="flbl" style="font-size:10px;">Remarks Column</label>
+            <select class="fi" style="padding:8px 10px;font-size:12px;" id="imp-col-rem"><option value="">(none)</option></select>
+          </div>
+          <div>
+            <label class="flbl" style="font-size:10px;">Default Category</label>
+            <select class="fi" style="padding:8px 10px;font-size:12px;" id="imp-def-cat"></select>
+          </div>
+        </div>
+
+        <!-- Date format hint -->
+        <div style="font-size:11px;color:var(--txm);margin-bottom:12px;">
+          ⚠️ Dates must be YYYY-MM-DD or DD/MM/YYYY or MM/DD/YYYY
+        </div>
+
+        <!-- Preview -->
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;" id="imp-preview-label">Preview (first 5 rows)</div>
+        <div id="imp-preview" style="background:var(--card);border-radius:10px;overflow:hidden;margin-bottom:14px;max-height:200px;overflow-y:auto;font-size:12px;"></div>
+
+        <div id="imp-err" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;padding:8px 12px;background:rgba(255,95,126,.1);border-radius:8px;"></div>
+      </div>
+      <div class="factions">
+        <button class="btn btng" onclick="impBack()">← Back</button>
+        <button class="btn btnp" onclick="impConfirm()">Import All</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Result -->
+    <div id="imp-step3" style="display:none;text-align:center;padding:24px 20px 8px;">
+      <div style="font-size:48px;margin-bottom:12px;">✅</div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:6px;" id="imp-result-title"></div>
+      <div style="font-size:13px;color:var(--txm);" id="imp-result-sub"></div>
+      <div class="factions" style="margin-top:20px;">
+        <button class="btn btnp" onclick="closeDrawer('import-dover');renderDash();">Done</button>
       </div>
     </div>
   </div>
@@ -1510,6 +1603,257 @@ function deleteTxn() {
   showToast('🗑️ Transaction deleted');
   renderDash();
   if (curTab === 'transactions') renderTxns();
+}
+
+// ── CSV IMPORT ────────────────────────────────────
+var impRows = [];    // parsed CSV rows (array of objects)
+var impHeaders = []; // CSV column headers
+
+function openImportDrawer() {
+  // Reset
+  impRows = []; impHeaders = [];
+  document.getElementById('imp-step1').style.display = 'block';
+  document.getElementById('imp-step2').style.display = 'none';
+  document.getElementById('imp-step3').style.display = 'none';
+  document.getElementById('csv-file-input').value = '';
+  openDrawer('import-dover');
+}
+
+function handleCSVFile(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      parseCSV(e.target.result);
+    } catch(err) {
+      showToast('Error reading file: ' + err.message);
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function parseCSV(text) {
+  // Detect delimiter: semicolon or comma
+  var firstLine = text.split('\n')[0];
+  var delim = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
+
+  var lines = text.replace(/\r/g,'').split('\n').filter(function(l){ return l.trim(); });
+  if (lines.length < 2) { showToast('CSV must have at least 2 rows'); return; }
+
+  // Parse header
+  impHeaders = parseCSVLine(lines[0], delim);
+
+  // Parse rows
+  impRows = [];
+  for (var i = 1; i < lines.length; i++) {
+    var vals = parseCSVLine(lines[i], delim);
+    if (vals.length === 0) continue;
+    var row = {};
+    impHeaders.forEach(function(h, idx) { row[h] = (vals[idx] || '').trim(); });
+    impRows.push(row);
+  }
+
+  if (impRows.length === 0) { showToast('No data rows found'); return; }
+
+  // Auto-detect Spenza native format
+  var isNative = impHeaders.indexOf('PAYEE_ITEM_DESC') > -1 && impHeaders.indexOf('TRAN_DATE') > -1;
+
+  // Populate column selectors
+  populateColSelectors(isNative);
+
+  // Show step 2
+  document.getElementById('imp-step1').style.display = 'none';
+  document.getElementById('imp-step2').style.display = 'block';
+  document.getElementById('imp-err').style.display = 'none';
+  updateImpPreview();
+}
+
+function parseCSVLine(line, delim) {
+  var result = [], cur = '', inQ = false;
+  for (var i = 0; i < line.length; i++) {
+    var c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === delim && !inQ) { result.push(cur.trim()); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+function populateColSelectors(isNative) {
+  var selIds = ['imp-col-date','imp-col-amount','imp-col-payee','imp-col-cat','imp-col-rem'];
+  var optHtml = impHeaders.map(function(h){ return '<option value="'+h+'">'+h+'</option>'; }).join('');
+  var optHtmlWithNone = '<option value="">(none)</option>' + optHtml;
+
+  selIds.forEach(function(id) {
+    var sel = document.getElementById(id);
+    var hasNone = id === 'imp-col-cat' || id === 'imp-col-rem';
+    sel.innerHTML = hasNone ? optHtmlWithNone : optHtml;
+  });
+
+  // Populate account selector
+  var accSel = document.getElementById('imp-account');
+  if (accSel.options.length === 0) {
+    allAccts.forEach(function(a){ accSel.add(new Option(al(a), a)); });
+  }
+
+  // Populate default category
+  var defCat = document.getElementById('imp-def-cat');
+  defCat.innerHTML = allCats.map(function(c){ return '<option value="'+c+'">'+c+'</option>'; }).join('');
+  defCat.value = 'Others';
+
+  // Auto-select for Spenza native format
+  if (isNative) {
+    document.getElementById('imp-col-date').value   = 'TRAN_DATE';
+    document.getElementById('imp-col-amount').value = 'AMOUNT';
+    document.getElementById('imp-col-payee').value  = 'PAYEE_ITEM_DESC';
+    document.getElementById('imp-col-cat').value    = 'CATEGORY';
+    document.getElementById('imp-col-rem').value    = 'REMARKS';
+  } else {
+    // Best-guess mapping by common header names
+    var guesses = {
+      date:   ['date','tran_date','tanggal','transaction date','trans date','posting date'],
+      amount: ['amount','jumlah','debit','credit','nominal','value'],
+      payee:  ['payee','description','keterangan','merchant','payee_item_desc','narration'],
+      cat:    ['category','kategori','type'],
+      rem:    ['remarks','notes','catatan','note','memo'],
+    };
+    function bestGuess(field) {
+      var lower = impHeaders.map(function(h){ return h.toLowerCase(); });
+      for (var i=0; i<guesses[field].length; i++) {
+        var idx = lower.indexOf(guesses[field][i]);
+        if (idx > -1) return impHeaders[idx];
+      }
+      return impHeaders[0] || '';
+    }
+    document.getElementById('imp-col-date').value   = bestGuess('date');
+    document.getElementById('imp-col-amount').value = bestGuess('amount');
+    document.getElementById('imp-col-payee').value  = bestGuess('payee');
+    document.getElementById('imp-col-cat').value    = bestGuess('cat');
+    document.getElementById('imp-col-rem').value    = bestGuess('rem');
+  }
+
+  // Add onchange listeners to update preview
+  ['imp-col-date','imp-col-amount','imp-col-payee','imp-col-cat','imp-col-rem'].forEach(function(id){
+    document.getElementById(id).onchange = updateImpPreview;
+  });
+}
+
+function parseAmount(raw) {
+  if (!raw) return NaN;
+  // Handle formats: -1.234,56 or -1,234.56 or -1234.56 or -1234,56
+  var s = raw.toString().trim().replace(/[^\d.,\-]/g,'');
+  // If both . and , exist, the last one is decimal
+  if (s.indexOf(',') > -1 && s.indexOf('.') > -1) {
+    if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+      s = s.replace(/\./g,'').replace(',','.');
+    } else {
+      s = s.replace(/,/g,'');
+    }
+  } else if (s.indexOf(',') > -1) {
+    // Only comma — treat as decimal if at end with 1-2 digits
+    var parts = s.split(',');
+    if (parts[parts.length-1].length <= 2) {
+      s = s.replace(',','.');
+    } else {
+      s = s.replace(/,/g,'');
+    }
+  }
+  return parseFloat(s);
+}
+
+function parseDate(raw) {
+  if (!raw) return '';
+  raw = raw.trim().replace(/"/g,'');
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0,10);
+  // DD/MM/YYYY
+  var m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (m) {
+    // Ambiguous: assume DD/MM/YYYY for Indonesian locale
+    return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  }
+  // MM/DD/YYYY
+  var m2 = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (m2) return (m2[3].length===2?'20'+m2[3]:m2[3])+'-'+m2[1].padStart(2,'0')+'-'+m2[2].padStart(2,'0');
+  return raw.slice(0,10);
+}
+
+function getMappedRow(row) {
+  var colDate   = document.getElementById('imp-col-date').value;
+  var colAmt    = document.getElementById('imp-col-amount').value;
+  var colPayee  = document.getElementById('imp-col-payee').value;
+  var colCat    = document.getElementById('imp-col-cat').value;
+  var colRem    = document.getElementById('imp-col-rem').value;
+  var defCat    = document.getElementById('imp-def-cat').value || 'Others';
+
+  var date   = parseDate(row[colDate] || '');
+  var amount = parseAmount(row[colAmt] || '0');
+  var payee  = (row[colPayee] || '').replace(/^"|"$/g,'').trim();
+  var cat    = colCat ? (row[colCat] || '').replace(/^"|"$/g,'').trim() || defCat : defCat;
+  var rem    = colRem ? (row[colRem] || '').replace(/^"|"$/g,'').trim() : '';
+
+  return { date: date, amount: amount, payee: payee, category: cat, remarks: rem };
+}
+
+function updateImpPreview() {
+  var preview = document.getElementById('imp-preview');
+  var sample  = impRows.slice(0, 5);
+  if (!sample.length) return;
+
+  var rows = sample.map(function(row) {
+    var mapped = getMappedRow(row);
+    var valid  = mapped.date && !isNaN(mapped.amount) && mapped.payee;
+    var color  = valid ? 'var(--green)' : 'var(--red)';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--bdr);">' +
+      '<div style="width:6px;height:6px;border-radius:50%;background:'+color+';flex-shrink:0;"></div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(mapped.payee||'(no payee)')+'</div>' +
+        '<div style="font-size:11px;color:var(--txm);">'+(mapped.date||'(no date)')+' · '+(mapped.category||'—')+'</div>' +
+      '</div>' +
+      '<div style="font-family:JetBrains Mono,monospace;font-size:12px;color:'+(mapped.amount>=0?'var(--green)':'var(--red)');font-weight:600;flex-shrink:0;">'+(isNaN(mapped.amount)?'?':((mapped.amount>=0?'+':'')+fn(mapped.amount)))+'</div>' +
+    '</div>';
+  }).join('');
+
+  var valid = sample.filter(function(r){ var mv=getMappedRow(r); return mv.date&&!isNaN(mv.amount)&&mv.payee; }).length;
+  document.getElementById('imp-preview-label').textContent = 'Preview · ' + impRows.length + ' rows (' + valid + '/' + sample.length + ' sample valid)';
+  preview.innerHTML = rows;
+}
+
+function impBack() {
+  document.getElementById('imp-step1').style.display = 'block';
+  document.getElementById('imp-step2').style.display = 'none';
+}
+
+function impConfirm() {
+  var acct   = document.getElementById('imp-account').value;
+  var errEl  = document.getElementById('imp-err');
+  if (!acct) { errEl.textContent = 'Please select a target account'; errEl.style.display='block'; return; }
+
+  var imported = 0, skipped = 0;
+  impRows.forEach(function(row) {
+    var mapped = getMappedRow(row);
+    if (!mapped.date || isNaN(mapped.amount) || !mapped.payee) { skipped++; return; }
+
+    var txn = { payee: mapped.payee, category: mapped.category || 'Others', amount: mapped.amount,
+                date: mapped.date, remarks: mapped.remarks, account: acct };
+    allTxns.push(txn);
+    RAW_DATA[acct].push({ payee: txn.payee, category: txn.category, amount: txn.amount,
+                          date: txn.date, remarks: txn.remarks });
+    acctBals[acct] = (acctBals[acct] || 0) + txn.amount;
+    imported++;
+  });
+
+  // Re-sort and re-index
+  allTxns.sort(function(a,b){ return b.date>a.date?1:-1; });
+  allTxns.forEach(function(t,i){ t._id = i; });
+
+  // Show result
+  document.getElementById('imp-step2').style.display = 'none';
+  document.getElementById('imp-step3').style.display = 'block';
+  document.getElementById('imp-result-title').textContent = imported + ' transactions imported!';
+  document.getElementById('imp-result-sub').textContent = 'To ' + al(acct) + (skipped ? ' · ' + skipped + ' rows skipped (invalid)' : '');
 }
 
 // ── TXN LIST DRAWER ──────────────────────────────
