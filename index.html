@@ -7,10 +7,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0f">
-<title>Spenza v2.21</title>
+<title>Spenza v2.23</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <script src="https://accounts.google.com/gsi/client" async></script>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -288,9 +292,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
         <div class="ibtn" onclick="openSideMenu()" style="flex-shrink:0;">
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </div>
-        <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.21</span></div>
+        <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.23</span></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
+        <div id="sync-indicator" style="font-size:16px;color:var(--txm);padding:4px;cursor:default;" title="Sync status">☁</div>
         <div class="ibtn" onclick="openTfDrawer()"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
         <div class="ibtn" onclick="openImportDrawer()" title="Import CSV"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
         <div class="uchip" onclick="toggleUMenu()" id="uchip"><span class="uchip-n" id="chip-n">User</span><div class="uav" id="chip-av">U</div></div>
@@ -454,13 +459,18 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
           <div style="font-size:16px;font-weight:700;" id="more-name">User</div>
           <div style="font-size:12px;color:var(--txm);margin-top:2px;" id="more-email"></div>
           <div style="font-size:11px;color:var(--txm);margin-top:8px;" id="more-count"></div>
-          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.21</div>
+          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.23</div>
         </div>
       </div>
       <div class="mitem" onclick="openAddDrawer()"><div class="mico" style="background:rgba(124,110,255,.15);">➕</div><div class="mlbl">Add Transaction</div><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--txm);"><path d="M9 18l6-6-6-6"/></svg></div>
       <div class="mitem" onclick="openTfDrawer()"><div class="mico" style="background:rgba(255,110,156,.15);">🔁</div><div class="mlbl">Transfer</div><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--txm);"><path d="M9 18l6-6-6-6"/></svg></div>
       <div class="mitem" onclick="openImportDrawer()"><div class="mico" style="background:rgba(110,255,232,.1);">📥</div><div class="mlbl">Import CSV</div><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--txm);"><path d="M9 18l6-6-6-6"/></svg></div>
       <div class="mitem" onclick="signOut()" style="margin-top:8px;"><div class="mico" style="background:rgba(255,95,126,.1);">🚪</div><div class="mlbl" style="color:var(--red);">Sign Out</div></div>
+      <div style="margin:12px 20px 0;padding:12px;background:var(--card);border:1px solid var(--bdr);border-radius:12px;">
+        <div style="font-size:11px;color:var(--txm);line-height:1.6;">
+          <span id="firebase-status-text">☁ Cloud sync: <b>not configured</b><br>Add Firebase config to enable sync across devices.</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1114,6 +1124,7 @@ function enterApp() {
     try {
       document.getElementById('loading-screen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
+      loadData(); // restore saved transactions before rendering
       initApp();
     } catch(e) {
       console.error('initApp error:', e);
@@ -1134,6 +1145,17 @@ function initApp() {
 
 function updateUserUI() {
   if (!currentUser) return;
+  // Update Firebase status text
+  var fst = document.getElementById('firebase-status-text');
+  if (fst) {
+    if (!FIREBASE_CONFIG.apiKey) {
+      fst.innerHTML = '☁ Cloud sync: <b>not configured</b><br>Add Firebase config to enable sync.';
+    } else if (firebaseReady) {
+      fst.innerHTML = '✅ Cloud sync: <b>active</b><br>Transactions saved to Firestore.';
+    } else {
+      fst.innerHTML = '⚠️ Firebase error — saving locally only.';
+    }
+  }
   var ini2 = (currentUser.name||'U').split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();
   var avHtml = currentUser.picture ? '<img src="'+currentUser.picture+'" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">' : ini2;
   document.getElementById('chip-n').textContent = (currentUser.name||'User').split(' ')[0];
@@ -1705,10 +1727,12 @@ function submitAdd(){
   var am=parseFloat(document.getElementById('a-amt').value), py=document.getElementById('a-pay').value.trim();
   var cat=document.getElementById('a-cat').value||'Others', rm=document.getElementById('a-rem').value.trim();
   if (!ac||!dt||isNaN(am)||!py){ showToast('Fill all required fields'); return; }
-  var t=Object.assign({},{payee:py,category:cat,amount:am,date:dt,remarks:rm,account:ac});
+  var t=Object.assign({},{payee:py,category:cat,amount:am,date:dt,remarks:rm,account:ac,_userAdded:true});
   allTxns.push(t); allTxns.sort(function(a,b){return b.date>a.date?1:-1;});
+  allTxns.forEach(function(t,i){t._id=i;});
   RAW_DATA[ac].push({payee:py,category:cat,amount:am,date:dt,remarks:rm});
   acctBals[ac]=(acctBals[ac]||0)+am;
+  saveData();
   closeDrawer('add-dover'); showToast('✅ Transaction added!'); renderDash();
 }
 
@@ -1720,11 +1744,13 @@ function submitTf(){
   if (fr===to){ showToast('Source and destination must differ'); return; }
   if (!dt||isNaN(am)||am<=0){ showToast('Enter valid date and amount'); return; }
   var fl=al(fr), tl=al(to);
-  var outT=Object.assign({},{payee:'Transfer to '+tl,category:'Transfer (Outward)',amount:-am,date:dt,remarks:rm,account:fr});
-  var inT=Object.assign({},{payee:'Transfer from '+fl,category:'Transfer (Inward)',amount:am,date:dt,remarks:rm,account:to});
+  var outT=Object.assign({},{payee:'Transfer to '+tl,category:'Transfer (Outward)',amount:-am,date:dt,remarks:rm,account:fr,_userAdded:true});
+  var inT=Object.assign({},{payee:'Transfer from '+fl,category:'Transfer (Inward)',amount:am,date:dt,remarks:rm,account:to,_userAdded:true});
   allTxns.push(outT,inT); allTxns.sort(function(a,b){return b.date>a.date?1:-1;});
+  allTxns.forEach(function(t,i){t._id=i;});
   RAW_DATA[fr].push(Object.assign({},outT)); RAW_DATA[to].push(Object.assign({},inT));
   acctBals[fr]-=am; acctBals[to]+=am;
+  saveData();
   closeDrawer('tf-dover'); showToast('✅ Transferred Rp '+ff(am)); renderDash();
 }
 
@@ -1886,6 +1912,7 @@ function saveEdit() {
   allTxns.sort(function(a,b){ return b.date>a.date?1:-1; });
   allTxns.forEach(function(t,i){ t._id = i; });
 
+  saveData();
   closeDrawer('txnd-dover');
   showToast('✅ Transaction updated!');
   renderDash();
@@ -1912,6 +1939,7 @@ function deleteTxn() {
   // Re-index
   allTxns.forEach(function(t,i){ t._id = i; });
 
+  saveData();
   closeDrawer('txnd-dover');
   showToast('🗑️ Transaction deleted');
   renderDash();
@@ -2211,7 +2239,7 @@ function impConfirm() {
     if (!mapped.date || isNaN(mapped.amount) || !mapped.payee) { skipped++; return; }
 
     var txn = { payee: mapped.payee, category: mapped.category || 'Others', amount: mapped.amount,
-                date: mapped.date, remarks: mapped.remarks, account: acct };
+                date: mapped.date, remarks: mapped.remarks, account: acct, _userAdded: true };
     allTxns.push(txn);
     RAW_DATA[acct].push({ payee: txn.payee, category: txn.category, amount: txn.amount,
                           date: txn.date, remarks: txn.remarks });
@@ -2224,6 +2252,7 @@ function impConfirm() {
   allTxns.forEach(function(t,i){ t._id = i; });
 
   // Show result
+  saveData();
   document.getElementById('imp-step2').style.display = 'none';
   document.getElementById('imp-step3').style.display = 'block';
   document.getElementById('imp-result-title').textContent = imported + ' transactions imported!';
@@ -2387,6 +2416,143 @@ function renderTxnListBody(txns) {
   }
 }
 
+// ── FIREBASE CONFIG ──────────────────────────────
+// Paste your Firebase config here after setting up Firebase project
+// Get it from: Firebase Console → Project Settings → Your Apps → Web App
+var FIREBASE_CONFIG = {
+  // apiKey: "YOUR_API_KEY",
+  // authDomain: "YOUR_PROJECT.firebaseapp.com",
+  // projectId: "YOUR_PROJECT_ID",
+  // storageBucket: "YOUR_PROJECT.appspot.com",
+  // messagingSenderId: "YOUR_SENDER_ID",
+  // appId: "YOUR_APP_ID"
+};
+
+var db = null;
+var firebaseReady = false;
+var STORAGE_KEY = 'spenza_txns_v1';
+
+function initFirebase() {
+  var cfg = FIREBASE_CONFIG;
+  if (!cfg.apiKey) {
+    console.log('Firebase not configured — using localStorage only');
+    return;
+  }
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(cfg);
+    }
+    db = firebase.firestore();
+    firebaseReady = true;
+    console.log('Firebase ready');
+  } catch(e) {
+    console.warn('Firebase init failed:', e);
+    firebaseReady = false;
+  }
+}
+
+// ── SAVE ──────────────────────────────────────────
+function saveData() {
+  var toSave = allTxns.filter(function(t){ return t._userAdded; }).map(function(t){
+    return { payee:t.payee, category:t.category, amount:t.amount,
+             date:t.date, remarks:t.remarks||'', account:t.account };
+  });
+
+  // Always save to localStorage as backup
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+  } catch(e) { console.warn('localStorage save failed:', e); }
+
+  // Also save to Firestore if available
+  if (firebaseReady && db && currentUser && !currentUser.isDemo) {
+    var uid = currentUser.sub || currentUser.uid;
+    if (!uid) return;
+    db.collection('users').doc(uid).collection('transactions')
+      .doc('data').set({ txns: toSave, updatedAt: firebase.firestore.FieldValue.serverTimestamp() })
+      .then(function(){ console.log('Saved to Firestore:', toSave.length, 'txns'); })
+      .catch(function(e){ console.warn('Firestore save failed:', e); });
+  }
+}
+
+// ── LOAD ──────────────────────────────────────────
+function loadData() {
+  if (firebaseReady && db && currentUser && !currentUser.isDemo) {
+    // Load from Firestore, fall back to localStorage
+    var uid = currentUser.sub || currentUser.uid;
+    if (!uid) { loadFromLocalStorage(); return; }
+    showSyncIndicator('syncing');
+    db.collection('users').doc(uid).collection('transactions').doc('data').get()
+      .then(function(doc) {
+        if (doc.exists && doc.data().txns) {
+          applyLoadedTxns(doc.data().txns);
+          console.log('Loaded from Firestore:', doc.data().txns.length, 'txns');
+          showSyncIndicator('synced');
+        } else {
+          // No cloud data yet — try localStorage
+          loadFromLocalStorage();
+          showSyncIndicator('synced');
+        }
+        renderDash();
+      })
+      .catch(function(e) {
+        console.warn('Firestore load failed, using localStorage:', e);
+        loadFromLocalStorage();
+        showSyncIndicator('offline');
+        renderDash();
+      });
+  } else {
+    loadFromLocalStorage();
+  }
+}
+
+function loadFromLocalStorage() {
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    var saved = JSON.parse(raw);
+    if (Array.isArray(saved) && saved.length) {
+      applyLoadedTxns(saved);
+      console.log('Loaded from localStorage:', saved.length, 'txns');
+    }
+  } catch(e) { console.warn('localStorage load failed:', e); }
+}
+
+function applyLoadedTxns(saved) {
+  var added = 0;
+  saved.forEach(function(t) {
+    if (!t.account || !t.date || isNaN(t.amount) || !t.payee) return;
+    if (!RAW_DATA[t.account]) return;
+    var dup = allTxns.some(function(x){
+      return x.account===t.account && x.date===t.date &&
+             x.amount===t.amount && x.payee===t.payee && x._userAdded;
+    });
+    if (dup) return;
+    var txn = { payee:t.payee, category:t.category||'Others', amount:t.amount,
+                date:t.date, remarks:t.remarks||'', account:t.account, _userAdded:true };
+    allTxns.push(txn);
+    RAW_DATA[t.account].push({ payee:txn.payee, category:txn.category,
+                                amount:txn.amount, date:txn.date, remarks:txn.remarks });
+    acctBals[t.account] = (acctBals[t.account]||0) + t.amount;
+    added++;
+  });
+  if (added > 0) {
+    allTxns.sort(function(a,b){ return b.date>a.date?1:-1; });
+    allTxns.forEach(function(t,i){ t._id = i; });
+  }
+}
+
+// ── SYNC INDICATOR ────────────────────────────────
+function showSyncIndicator(state) {
+  var el = document.getElementById('sync-indicator');
+  if (!el) return;
+  var icons = { syncing:'↻', synced:'☁', offline:'⚠' };
+  var colors = { syncing:'var(--txm)', synced:'var(--green)', offline:'var(--accent4,#ffb86e)' };
+  el.textContent = icons[state] || '☁';
+  el.style.color = colors[state] || 'var(--txm)';
+  el.title = state === 'syncing' ? 'Syncing...' : state === 'synced' ? 'Saved to cloud' : 'Offline - saved locally';
+}
+
+
 // ── BOOT ──────────────────────────────────────────
 var googleInited = false;
 function initGoogle() {
@@ -2400,6 +2566,7 @@ function initGoogle() {
 }
 
 window.addEventListener('DOMContentLoaded', function() {
+  initFirebase();
   initGoogle();
   checkAuth();
 });
