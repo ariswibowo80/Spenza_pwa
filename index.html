@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0f">
-<title>Spenza v2.18</title>
+<title>Spenza v2.19</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <script src="https://accounts.google.com/gsi/client" async></script>
@@ -218,6 +218,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
 .cdpay{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cdsub{font-size:11px;color:var(--txm);margin-top:1px;}
 .cdamt{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--red);}
+/* SIDE MENU */
+.sm-item{display:flex;align-items:center;gap:12px;padding:11px 16px;margin:2px 8px;border-radius:12px;cursor:pointer;font-size:14px;font-weight:500;color:var(--txd);transition:background .15s;}
+.sm-item:active{background:var(--card2);}
+.sm-item.active{background:rgba(124,110,255,.12);color:var(--ac);}
+.sm-ico{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 
 /* INSTALL BANNER */
 .ibanner{margin:0 20px 16px;background:rgba(124,110,255,.1);border:1px solid rgba(124,110,255,.3);border-radius:var(--rsm);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;}
@@ -279,7 +284,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
   <!-- DASHBOARD -->
   <div class="page active" id="pg-dashboard">
     <div class="hdr" style="border-bottom:1px solid var(--bdr);">
-      <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.18</span></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="ibtn" onclick="openSideMenu()" style="flex-shrink:0;">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </div>
+        <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.19</span></div>
+      </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <div class="ibtn" onclick="openTfDrawer()"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
         <div class="ibtn" onclick="openImportDrawer()" title="Import CSV"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
@@ -430,7 +440,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
           <div style="font-size:16px;font-weight:700;" id="more-name">User</div>
           <div style="font-size:12px;color:var(--txm);margin-top:2px;" id="more-email"></div>
           <div style="font-size:11px;color:var(--txm);margin-top:8px;" id="more-count"></div>
-          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.18</div>
+          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.19</div>
         </div>
       </div>
       <div class="mitem" onclick="openAddDrawer()"><div class="mico" style="background:rgba(124,110,255,.15);">➕</div><div class="mlbl">Add Transaction</div><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--txm);"><path d="M9 18l6-6-6-6"/></svg></div>
@@ -478,6 +488,85 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
     <svg id="fab-icon-x" width="22" height="22" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24" style="display:none;"><path d="M18 6L6 18M6 6l12 12"/></svg>
   </div>
 </div>
+</div>
+
+<!-- SIDE MENU -->
+<div id="sidemenu-overlay" onclick="closeSideMenu()" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;display:none;backdrop-filter:blur(2px);">
+</div>
+<div id="sidemenu" style="position:fixed;top:0;left:-280px;width:260px;height:100%;background:var(--sur);border-right:1px solid var(--bdr);z-index:801;transition:left .3s cubic-bezier(.32,.72,0,1);display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0);">
+  <!-- Header -->
+  <div style="padding:calc(env(safe-area-inset-top,0px) + 20px) 20px 20px;border-bottom:1px solid var(--bdr);">
+    <div style="font-size:24px;font-weight:700;background:linear-gradient(135deg,#7c6eff,#ff6e9c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-.5px;">Spenza</div>
+    <div id="sm-user-name" style="font-size:12px;color:var(--txm);margin-top:4px;"></div>
+  </div>
+
+  <!-- Nav items -->
+  <div style="flex:1;overflow-y:auto;padding:12px 0;">
+
+    <div style="padding:6px 16px 4px;font-size:10px;color:var(--txm);text-transform:uppercase;letter-spacing:1px;font-weight:600;">Navigate</div>
+
+    <div class="sm-item active" id="sm-overview" onclick="smGo('dashboard')">
+      <div class="sm-ico" style="background:rgba(124,110,255,.15);">
+        <svg width="16" height="16" fill="none" stroke="#7c6eff" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+      </div>
+      <span>Overview</span>
+    </div>
+
+    <div class="sm-item" id="sm-transactions" onclick="smGo('transactions')">
+      <div class="sm-ico" style="background:rgba(255,110,156,.15);">
+        <svg width="16" height="16" fill="none" stroke="#ff6e9c" stroke-width="2" viewBox="0 0 24 24"><path d="M8 6l4-4 4 4M16 18l-4 4-4-4M12 2v20"/></svg>
+      </div>
+      <span>Transactions</span>
+    </div>
+
+    <div class="sm-item" id="sm-reports" onclick="smGo('reports')">
+      <div class="sm-ico" style="background:rgba(110,255,232,.15);">
+        <svg width="16" height="16" fill="none" stroke="#6effe8" stroke-width="2" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      </div>
+      <span>Reports</span>
+    </div>
+
+    <div class="sm-item" id="sm-accounts" onclick="smGo('accounts')">
+      <div class="sm-ico" style="background:rgba(255,184,110,.15);">
+        <svg width="16" height="16" fill="none" stroke="#ffb86e" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+      </div>
+      <span>Accounts</span>
+    </div>
+
+    <div style="padding:16px 16px 4px;font-size:10px;color:var(--txm);text-transform:uppercase;letter-spacing:1px;font-weight:600;">Actions</div>
+
+    <div class="sm-item" onclick="closeSideMenu();openAddDrawer();">
+      <div class="sm-ico" style="background:rgba(124,110,255,.15);">
+        <svg width="16" height="16" fill="none" stroke="#7c6eff" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </div>
+      <span>Add Transaction</span>
+    </div>
+
+    <div class="sm-item" onclick="closeSideMenu();openTfDrawer();">
+      <div class="sm-ico" style="background:rgba(255,110,156,.15);">
+        <svg width="16" height="16" fill="none" stroke="#ff6e9c" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </div>
+      <span>Transfer</span>
+    </div>
+
+    <div class="sm-item" onclick="closeSideMenu();openImportDrawer();">
+      <div class="sm-ico" style="background:rgba(110,255,232,.15);">
+        <svg width="16" height="16" fill="none" stroke="#6effe8" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </div>
+      <span>Import CSV</span>
+    </div>
+
+  </div>
+
+  <!-- Footer: sign out -->
+  <div style="padding:12px 8px;border-top:1px solid var(--bdr);">
+    <div class="sm-item" onclick="closeSideMenu();signOut();" style="color:var(--red);">
+      <div class="sm-ico" style="background:rgba(255,95,126,.1);">
+        <svg width="16" height="16" fill="none" stroke="#ff5f7e" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </div>
+      <span>Sign Out</span>
+    </div>
+  </div>
 </div>
 
 <!-- TRANSACTION DETAIL / EDIT DRAWER -->
@@ -734,6 +823,85 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
       <div><div style="font-size:11px;color:var(--txm);">Count</div><div id="cd-count" style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;margin-top:4px;"></div></div>
     </div>
     <div id="cd-list" style="max-height:55vh;overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- SIDE MENU -->
+<div id="sidemenu-overlay" onclick="closeSideMenu()" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;display:none;backdrop-filter:blur(2px);">
+</div>
+<div id="sidemenu" style="position:fixed;top:0;left:-280px;width:260px;height:100%;background:var(--sur);border-right:1px solid var(--bdr);z-index:801;transition:left .3s cubic-bezier(.32,.72,0,1);display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0);">
+  <!-- Header -->
+  <div style="padding:calc(env(safe-area-inset-top,0px) + 20px) 20px 20px;border-bottom:1px solid var(--bdr);">
+    <div style="font-size:24px;font-weight:700;background:linear-gradient(135deg,#7c6eff,#ff6e9c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-.5px;">Spenza</div>
+    <div id="sm-user-name" style="font-size:12px;color:var(--txm);margin-top:4px;"></div>
+  </div>
+
+  <!-- Nav items -->
+  <div style="flex:1;overflow-y:auto;padding:12px 0;">
+
+    <div style="padding:6px 16px 4px;font-size:10px;color:var(--txm);text-transform:uppercase;letter-spacing:1px;font-weight:600;">Navigate</div>
+
+    <div class="sm-item active" id="sm-overview" onclick="smGo('dashboard')">
+      <div class="sm-ico" style="background:rgba(124,110,255,.15);">
+        <svg width="16" height="16" fill="none" stroke="#7c6eff" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+      </div>
+      <span>Overview</span>
+    </div>
+
+    <div class="sm-item" id="sm-transactions" onclick="smGo('transactions')">
+      <div class="sm-ico" style="background:rgba(255,110,156,.15);">
+        <svg width="16" height="16" fill="none" stroke="#ff6e9c" stroke-width="2" viewBox="0 0 24 24"><path d="M8 6l4-4 4 4M16 18l-4 4-4-4M12 2v20"/></svg>
+      </div>
+      <span>Transactions</span>
+    </div>
+
+    <div class="sm-item" id="sm-reports" onclick="smGo('reports')">
+      <div class="sm-ico" style="background:rgba(110,255,232,.15);">
+        <svg width="16" height="16" fill="none" stroke="#6effe8" stroke-width="2" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      </div>
+      <span>Reports</span>
+    </div>
+
+    <div class="sm-item" id="sm-accounts" onclick="smGo('accounts')">
+      <div class="sm-ico" style="background:rgba(255,184,110,.15);">
+        <svg width="16" height="16" fill="none" stroke="#ffb86e" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+      </div>
+      <span>Accounts</span>
+    </div>
+
+    <div style="padding:16px 16px 4px;font-size:10px;color:var(--txm);text-transform:uppercase;letter-spacing:1px;font-weight:600;">Actions</div>
+
+    <div class="sm-item" onclick="closeSideMenu();openAddDrawer();">
+      <div class="sm-ico" style="background:rgba(124,110,255,.15);">
+        <svg width="16" height="16" fill="none" stroke="#7c6eff" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </div>
+      <span>Add Transaction</span>
+    </div>
+
+    <div class="sm-item" onclick="closeSideMenu();openTfDrawer();">
+      <div class="sm-ico" style="background:rgba(255,110,156,.15);">
+        <svg width="16" height="16" fill="none" stroke="#ff6e9c" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </div>
+      <span>Transfer</span>
+    </div>
+
+    <div class="sm-item" onclick="closeSideMenu();openImportDrawer();">
+      <div class="sm-ico" style="background:rgba(110,255,232,.15);">
+        <svg width="16" height="16" fill="none" stroke="#6effe8" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </div>
+      <span>Import CSV</span>
+    </div>
+
+  </div>
+
+  <!-- Footer: sign out -->
+  <div style="padding:12px 8px;border-top:1px solid var(--bdr);">
+    <div class="sm-item" onclick="closeSideMenu();signOut();" style="color:var(--red);">
+      <div class="sm-ico" style="background:rgba(255,95,126,.1);">
+        <svg width="16" height="16" fill="none" stroke="#ff5f7e" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </div>
+      <span>Sign Out</span>
+    </div>
   </div>
 </div>
 
@@ -1658,6 +1826,35 @@ function deleteTxn() {
   showToast('🗑️ Transaction deleted');
   renderDash();
   if (curTab === 'transactions') renderTxns();
+}
+
+// ── SIDE MENU ─────────────────────────────────────
+function openSideMenu() {
+  document.getElementById('sidemenu').style.left = '0';
+  document.getElementById('sidemenu-overlay').style.display = 'block';
+  // Update user name
+  if (currentUser) {
+    document.getElementById('sm-user-name').textContent = currentUser.email || currentUser.name || '';
+  }
+  // Highlight active tab
+  ['overview','transactions','reports','accounts'].forEach(function(id) {
+    var el = document.getElementById('sm-'+id);
+    if (el) el.classList.remove('active');
+  });
+  var map = {dashboard:'overview', transactions:'transactions', reports:'reports', accounts:'accounts'};
+  var activeId = map[curTab];
+  if (activeId) {
+    var el = document.getElementById('sm-'+activeId);
+    if (el) el.classList.add('active');
+  }
+}
+function closeSideMenu() {
+  document.getElementById('sidemenu').style.left = '-280px';
+  document.getElementById('sidemenu-overlay').style.display = 'none';
+}
+function smGo(tab) {
+  closeSideMenu();
+  setTimeout(function(){ switchTab(tab); }, 280);
 }
 
 // ── SPEED DIAL FAB ────────────────────────────────
