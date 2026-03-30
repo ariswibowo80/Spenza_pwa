@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0f">
-<title>Spenza v2.23</title>
+<title>Spenza v2.24</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <script src="https://accounts.google.com/gsi/client" async></script>
@@ -292,7 +292,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
         <div class="ibtn" onclick="openSideMenu()" style="flex-shrink:0;">
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </div>
-        <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.23</span></div>
+        <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.24</span></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <div id="sync-indicator" style="font-size:16px;color:var(--txm);padding:4px;cursor:default;" title="Sync status">☁</div>
@@ -303,6 +303,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
     </div>
     <div class="pcontent">
       <div class="mbar"><div class="mscroll" id="mscroll"></div></div>
+      <!-- Account filter chips -->
+      <div style="padding:0 20px 14px;">
+        <div class="mscroll" id="acct-filter-scroll" style="gap:7px;"></div>
+      </div>
       <div id="dhero"></div>
       <div class="spills" id="dstats"></div>
       <div id="ibanner-c"></div>
@@ -459,7 +463,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
           <div style="font-size:16px;font-weight:700;" id="more-name">User</div>
           <div style="font-size:12px;color:var(--txm);margin-top:2px;" id="more-email"></div>
           <div style="font-size:11px;color:var(--txm);margin-top:8px;" id="more-count"></div>
-          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.23</div>
+          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.24</div>
         </div>
       </div>
       <div class="mitem" onclick="openAddDrawer()"><div class="mico" style="background:rgba(124,110,255,.15);">➕</div><div class="mlbl">Add Transaction</div><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--txm);"><path d="M9 18l6-6-6-6"/></svg></div>
@@ -1138,6 +1142,7 @@ function initApp() {
   updateUserUI();
   initDropdowns();
   buildMonthSel();
+  buildAcctFilter();
   renderDash();
   setTF('all');
   tfiltd = allTxns.slice();
@@ -1214,6 +1219,44 @@ function backToAccts() {
 
 // ── MONTH SELECTOR ────────────────────────────────
 var selMo = '';
+function buildAcctFilter() {
+  var scroll = document.getElementById('acct-filter-scroll');
+  if (!scroll) return;
+
+  // "All" chip
+  var allChip = document.createElement('div');
+  allChip.className = 'mchip' + (selAcct === '' ? ' active' : '');
+  allChip.id = 'af-all';
+  allChip.textContent = 'All';
+  allChip.addEventListener('click', function(){ selectAcct(''); });
+  scroll.appendChild(allChip);
+
+  // One chip per account
+  allAccts.forEach(function(a) {
+    var chip = document.createElement('div');
+    chip.className = 'mchip' + (selAcct === a ? ' active' : '');
+    chip.id = 'af-' + a;
+    chip.textContent = al(a);
+    chip.addEventListener('click', function(){ selectAcct(a); });
+    scroll.appendChild(chip);
+  });
+}
+
+function selectAcct(a) {
+  selAcct = a;
+  // Update chip active states
+  document.querySelectorAll('#acct-filter-scroll .mchip').forEach(function(c){
+    c.classList.remove('active');
+  });
+  var activeId = a ? 'af-' + a : 'af-all';
+  var el = document.getElementById(activeId);
+  if (el) {
+    el.classList.add('active');
+    el.scrollIntoView({block:'nearest', inline:'center', behavior:'smooth'});
+  }
+  renderDash();
+}
+
 function buildMonthSel() {
   var months = Array.from(new Set(allTxns.map(function(t){ return t.date.slice(0,7); }))).sort().reverse();
   var now = new Date(), thisM = now.toISOString().slice(0,7);
@@ -1236,7 +1279,13 @@ function selMonth(m) {
   if (el) { el.classList.add('active'); el.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'}); }
   renderDash();
 }
-function getDashTxns() { return selMo ? allTxns.filter(function(t){ return t.date.indexOf(selMo)===0; }) : allTxns; }
+var selAcct = ''; // '' = all accounts
+
+function getDashTxns() {
+  var txns = selMo ? allTxns.filter(function(t){ return t.date.indexOf(selMo)===0; }) : allTxns;
+  if (selAcct) txns = txns.filter(function(t){ return t.account === selAcct; });
+  return txns;
+}
 
 // ── DASHBOARD ─────────────────────────────────────
 var trendCI = null;
@@ -1272,6 +1321,16 @@ function renderDash() {
     '<div class="spill" style="cursor:pointer;" onclick="openTxnList(\'all\',selMo)"><div class="splbl">Accounts ›</div><div class="spval" style="color:var(--ac);">'+allAccts.length+'</div></div>'+
     '<div class="spill" style="cursor:pointer;" onclick="openTxnList(\'topcategory\',selMo,topCat)"><div class="splbl">Top Category ›</div><div class="spval" style="color:var(--ac2);font-size:10px;font-family:Outfit,sans-serif;">'+topCat+'</div></div>';
 
+  // Hide account pills if filtered to one account (redundant info)
+  var dacctSection = document.getElementById('daccts');
+  var dacctHdr = dacctSection ? dacctSection.previousElementSibling : null;
+  if (selAcct) {
+    if (dacctSection) dacctSection.style.display = 'none';
+    if (dacctHdr) dacctHdr.style.display = 'none';
+  } else {
+    if (dacctSection) dacctSection.style.display = '';
+    if (dacctHdr) dacctHdr.style.display = '';
+  }
   document.getElementById('daccts').innerHTML = allAccts.map(function(a){
     var txnsForMonth = selMo ? allTxns.filter(function(t){ return t.account===a && t.date.indexOf(selMo)===0; }) : allTxns.filter(function(t){ return t.account===a; });
     var monthExp = txnsForMonth.filter(function(t){ return t.amount<0&&!isTf(t.category); }).reduce(function(s,t){ return s+t.amount; },0);
@@ -2420,13 +2479,12 @@ function renderTxnListBody(txns) {
 // Paste your Firebase config here after setting up Firebase project
 // Get it from: Firebase Console → Project Settings → Your Apps → Web App
 var FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAG1pL0BRH3cRClDW5z80eAIY6VQD4jIAk",
-  authDomain: "spenza-4b016.firebaseapp.com",
-  projectId: "spenza-4b016",
-  storageBucket: "spenza-4b016.firebasestorage.app",
-  messagingSenderId: "110370864794",
-  appId: "1:110370864794:web:6c3237856d1f2c4d74e923",
-  measurementId: "G-S3KF20GJ0J"
+  // apiKey: "YOUR_API_KEY",
+  // authDomain: "YOUR_PROJECT.firebaseapp.com",
+  // projectId: "YOUR_PROJECT_ID",
+  // storageBucket: "YOUR_PROJECT.appspot.com",
+  // messagingSenderId: "YOUR_SENDER_ID",
+  // appId: "YOUR_APP_ID"
 };
 
 var db = null;
