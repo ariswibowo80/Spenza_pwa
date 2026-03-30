@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0f">
-<title>Spenza v2.24</title>
+<title>Spenza v2.25</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <script src="https://accounts.google.com/gsi/client" async></script>
@@ -292,7 +292,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
         <div class="ibtn" onclick="openSideMenu()" style="flex-shrink:0;">
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </div>
-        <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.24</span></div>
+        <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.25</span></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <div id="sync-indicator" style="font-size:16px;color:var(--txm);padding:4px;cursor:default;" title="Sync status">☁</div>
@@ -463,7 +463,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
           <div style="font-size:16px;font-weight:700;" id="more-name">User</div>
           <div style="font-size:12px;color:var(--txm);margin-top:2px;" id="more-email"></div>
           <div style="font-size:11px;color:var(--txm);margin-top:8px;" id="more-count"></div>
-          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.24</div>
+          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.25</div>
         </div>
       </div>
       <div class="mitem" onclick="openAddDrawer()"><div class="mico" style="background:rgba(124,110,255,.15);">➕</div><div class="mlbl">Add Transaction</div><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--txm);"><path d="M9 18l6-6-6-6"/></svg></div>
@@ -1089,6 +1089,20 @@ function handleGoogleCred(resp) {
     var p = JSON.parse(atob(resp.credential.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
     currentUser = {name:p.name||'User',email:p.email||'',picture:p.picture||'',sub:p.sub||''};
     try { localStorage.setItem('spenza_user', JSON.stringify(currentUser)); } catch(e){}
+    // Also sign into Firebase Auth with the Google credential so getFirebaseUID() returns correct UID
+    if (firebaseReady && firebase.auth) {
+      try {
+        var credential = firebase.auth.GoogleAuthProvider.credential(resp.credential);
+        firebase.auth().signInWithCredential(credential)
+          .then(function(result) {
+            // Update sub to Firebase UID for consistent Firestore paths
+            currentUser.uid = result.user.uid;
+            try { localStorage.setItem('spenza_user', JSON.stringify(currentUser)); } catch(e){}
+            console.log('Firebase Auth signed in, UID:', result.user.uid);
+          })
+          .catch(function(e) { console.warn('Firebase Auth sign-in failed (non-critical):', e); });
+      } catch(e) { console.warn('Firebase credential error:', e); }
+    }
     enterApp();
   } catch(e) { showErr('Sign-in failed. Try Demo Mode.'); }
 }
@@ -1786,7 +1800,7 @@ function submitAdd(){
   var am=parseFloat(document.getElementById('a-amt').value), py=document.getElementById('a-pay').value.trim();
   var cat=document.getElementById('a-cat').value||'Others', rm=document.getElementById('a-rem').value.trim();
   if (!ac||!dt||isNaN(am)||!py){ showToast('Fill all required fields'); return; }
-  var t=Object.assign({},{payee:py,category:cat,amount:am,date:dt,remarks:rm,account:ac,_userAdded:true});
+  var t=Object.assign({},{payee:py,category:cat,amount:am,date:dt,remarks:rm,account:ac,_userAdded:true,_tid:Date.now()+'_'+Math.random().toString(36).slice(2)});
   allTxns.push(t); allTxns.sort(function(a,b){return b.date>a.date?1:-1;});
   allTxns.forEach(function(t,i){t._id=i;});
   RAW_DATA[ac].push({payee:py,category:cat,amount:am,date:dt,remarks:rm});
@@ -1803,8 +1817,8 @@ function submitTf(){
   if (fr===to){ showToast('Source and destination must differ'); return; }
   if (!dt||isNaN(am)||am<=0){ showToast('Enter valid date and amount'); return; }
   var fl=al(fr), tl=al(to);
-  var outT=Object.assign({},{payee:'Transfer to '+tl,category:'Transfer (Outward)',amount:-am,date:dt,remarks:rm,account:fr,_userAdded:true});
-  var inT=Object.assign({},{payee:'Transfer from '+fl,category:'Transfer (Inward)',amount:am,date:dt,remarks:rm,account:to,_userAdded:true});
+  var outT=Object.assign({},{payee:'Transfer to '+tl,category:'Transfer (Outward)',amount:-am,date:dt,remarks:rm,account:fr,_userAdded:true,_tid:Date.now()+'_out_'+Math.random().toString(36).slice(2)});
+  var inT=Object.assign({},{payee:'Transfer from '+fl,category:'Transfer (Inward)',amount:am,date:dt,remarks:rm,account:to,_userAdded:true,_tid:Date.now()+'_in_'+Math.random().toString(36).slice(2)});
   allTxns.push(outT,inT); allTxns.sort(function(a,b){return b.date>a.date?1:-1;});
   allTxns.forEach(function(t,i){t._id=i;});
   RAW_DATA[fr].push(Object.assign({},outT)); RAW_DATA[to].push(Object.assign({},inT));
@@ -2298,7 +2312,8 @@ function impConfirm() {
     if (!mapped.date || isNaN(mapped.amount) || !mapped.payee) { skipped++; return; }
 
     var txn = { payee: mapped.payee, category: mapped.category || 'Others', amount: mapped.amount,
-                date: mapped.date, remarks: mapped.remarks, account: acct, _userAdded: true };
+                date: mapped.date, remarks: mapped.remarks, account: acct, _userAdded: true,
+                _tid: acct+'_'+mapped.date+'_'+mapped.amount+'_'+imported };
     allTxns.push(txn);
     RAW_DATA[acct].push({ payee: txn.payee, category: txn.category, amount: txn.amount,
                           date: txn.date, remarks: txn.remarks });
@@ -2511,43 +2526,97 @@ function initFirebase() {
 }
 
 // ── SAVE ──────────────────────────────────────────
+function getFirebaseUID() {
+  // Try Firebase Auth first (most reliable), then fall back to Google sub
+  try {
+    var fbUser = firebase.auth && firebase.auth().currentUser;
+    if (fbUser && fbUser.uid) return fbUser.uid;
+  } catch(e) {}
+  return currentUser ? (currentUser.sub || currentUser.uid || null) : null;
+}
+
+function makeTxnRecord(t) {
+  return {
+    payee: t.payee, category: t.category, amount: t.amount,
+    date: t.date, remarks: t.remarks || '', account: t.account,
+    _tid: t._tid || null  // unique transaction id for dedup
+  };
+}
+
 function saveData() {
-  var toSave = allTxns.filter(function(t){ return t._userAdded; }).map(function(t){
-    return { payee:t.payee, category:t.category, amount:t.amount,
-             date:t.date, remarks:t.remarks||'', account:t.account };
-  });
+  var toSave = allTxns.filter(function(t){ return t._userAdded; })
+                      .map(function(t){ return makeTxnRecord(t); });
 
   // Always save to localStorage as backup
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   } catch(e) { console.warn('localStorage save failed:', e); }
 
-  // Also save to Firestore if available
-  if (firebaseReady && db && currentUser && !currentUser.isDemo) {
-    var uid = currentUser.sub || currentUser.uid;
-    if (!uid) return;
-    db.collection('users').doc(uid).collection('transactions')
-      .doc('data').set({ txns: toSave, updatedAt: firebase.firestore.FieldValue.serverTimestamp() })
-      .then(function(){ console.log('Saved to Firestore:', toSave.length, 'txns'); })
-      .catch(function(e){ console.warn('Firestore save failed:', e); });
+  // Save to Firestore if available
+  if (!firebaseReady || !db || !currentUser || currentUser.isDemo) return;
+  var uid = getFirebaseUID();
+  if (!uid) { console.warn('No Firebase UID — cannot save to cloud'); return; }
+
+  // Split into chunks of 400 records to stay well under 1MB Firestore limit
+  var CHUNK = 400;
+  var chunks = [];
+  for (var i = 0; i < toSave.length; i += CHUNK) {
+    chunks.push(toSave.slice(i, i + CHUNK));
   }
+
+  var batch = db.batch();
+  var ref = db.collection('users').doc(uid).collection('transactions');
+
+  // Delete old chunk docs first, then write new ones
+  ref.get().then(function(snap) {
+    snap.forEach(function(doc) { batch.delete(doc.ref); });
+    chunks.forEach(function(chunk, idx) {
+      batch.set(ref.doc('chunk_' + idx), {
+        txns: chunk,
+        chunk: idx,
+        total: toSave.length,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    return batch.commit();
+  }).then(function() {
+    console.log('Saved to Firestore:', toSave.length, 'txns in', chunks.length, 'chunk(s)');
+    showSyncIndicator('synced');
+  }).catch(function(e) {
+    console.warn('Firestore save failed:', e);
+    showSyncIndicator('offline');
+  });
+  showSyncIndicator('syncing');
 }
 
 // ── LOAD ──────────────────────────────────────────
 function loadData() {
   if (firebaseReady && db && currentUser && !currentUser.isDemo) {
-    // Load from Firestore, fall back to localStorage
-    var uid = currentUser.sub || currentUser.uid;
+    var uid = getFirebaseUID();
     if (!uid) { loadFromLocalStorage(); return; }
     showSyncIndicator('syncing');
-    db.collection('users').doc(uid).collection('transactions').doc('data').get()
-      .then(function(doc) {
-        if (doc.exists && doc.data().txns) {
-          applyLoadedTxns(doc.data().txns);
-          console.log('Loaded from Firestore:', doc.data().txns.length, 'txns');
+    // Load ALL chunks
+    db.collection('users').doc(uid).collection('transactions').get()
+      .then(function(snap) {
+        if (snap.empty) {
+          loadFromLocalStorage();
+          showSyncIndicator('synced');
+          renderDash();
+          return;
+        }
+        // Collect all txns from all chunks, sorted by chunk index
+        var chunkDocs = [];
+        snap.forEach(function(doc) { chunkDocs.push(doc.data()); });
+        chunkDocs.sort(function(a, b) { return (a.chunk||0) - (b.chunk||0); });
+        var allSaved = [];
+        chunkDocs.forEach(function(d) {
+          if (Array.isArray(d.txns)) allSaved = allSaved.concat(d.txns);
+        });
+        if (allSaved.length > 0) {
+          applyLoadedTxns(allSaved);
+          console.log('Loaded from Firestore:', allSaved.length, 'txns');
           showSyncIndicator('synced');
         } else {
-          // No cloud data yet — try localStorage
           loadFromLocalStorage();
           showSyncIndicator('synced');
         }
@@ -2577,27 +2646,33 @@ function loadFromLocalStorage() {
 }
 
 function applyLoadedTxns(saved) {
+  // Build a set of existing _tid values for fast dedup
+  var existingTids = {};
+  allTxns.forEach(function(t) { if (t._tid) existingTids[t._tid] = true; });
+
   var added = 0;
   saved.forEach(function(t) {
-    if (!t.account || !t.date || isNaN(t.amount) || !t.payee) return;
+    if (!t.account || !t.date || isNaN(parseFloat(t.amount)) || !t.payee) return;
     if (!RAW_DATA[t.account]) return;
-    var dup = allTxns.some(function(x){
-      return x.account===t.account && x.date===t.date &&
-             x.amount===t.amount && x.payee===t.payee && x._userAdded;
-    });
-    if (dup) return;
-    var txn = { payee:t.payee, category:t.category||'Others', amount:t.amount,
-                date:t.date, remarks:t.remarks||'', account:t.account, _userAdded:true };
+
+    // If transaction has a _tid, use it for dedup (fast & reliable)
+    if (t._tid && existingTids[t._tid]) return;
+
+    var txn = { payee:t.payee, category:t.category||'Others', amount:parseFloat(t.amount),
+                date:t.date, remarks:t.remarks||'', account:t.account,
+                _userAdded:true, _tid: t._tid || null };
     allTxns.push(txn);
+    if (t._tid) existingTids[t._tid] = true;
     RAW_DATA[t.account].push({ payee:txn.payee, category:txn.category,
                                 amount:txn.amount, date:txn.date, remarks:txn.remarks });
-    acctBals[t.account] = (acctBals[t.account]||0) + t.amount;
+    acctBals[t.account] = (acctBals[t.account]||0) + txn.amount;
     added++;
   });
   if (added > 0) {
     allTxns.sort(function(a,b){ return b.date>a.date?1:-1; });
     allTxns.forEach(function(t,i){ t._id = i; });
   }
+  return added;
 }
 
 // ── SYNC INDICATOR ────────────────────────────────
