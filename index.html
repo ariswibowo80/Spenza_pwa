@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0f">
-<title>Spenza v2.25</title>
+<title>Spenza v2.26</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <script src="https://accounts.google.com/gsi/client" async></script>
@@ -292,7 +292,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
         <div class="ibtn" onclick="openSideMenu()" style="flex-shrink:0;">
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </div>
-        <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.25</span></div>
+        <div class="logo">Spenza <span style="font-size:11px;font-weight:500;color:var(--txm);font-family:JetBrains Mono,monospace;-webkit-text-fill-color:var(--txm);background:none;">v2.26</span></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <div id="sync-indicator" style="font-size:16px;color:var(--txm);padding:4px;cursor:default;" title="Sync status">☁</div>
@@ -463,7 +463,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Outfit',
           <div style="font-size:16px;font-weight:700;" id="more-name">User</div>
           <div style="font-size:12px;color:var(--txm);margin-top:2px;" id="more-email"></div>
           <div style="font-size:11px;color:var(--txm);margin-top:8px;" id="more-count"></div>
-          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.25</div>
+          <div style="font-size:10px;color:var(--txm);margin-top:4px;font-family:JetBrains Mono,monospace;">v2.26</div>
         </div>
       </div>
       <div class="mitem" onclick="openAddDrawer()"><div class="mico" style="background:rgba(124,110,255,.15);">➕</div><div class="mlbl">Add Transaction</div><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--txm);"><path d="M9 18l6-6-6-6"/></svg></div>
@@ -1311,16 +1311,26 @@ function renderDash() {
   var totBal = Object.values(acctBals).reduce(function(s,b){ return s+b; },0);
   var lbl = selMo ? (function(){ var p=selMo.split('-'); return MN[parseInt(p[1])-1]+' '+p[0]; })() : 'All Time';
 
+  // Ending balance: for selected account(s) up to end of selected month
+  var endingBalHero = totBal;
+  if (selMo) {
+    var cutoff = selMo + '-31';
+    endingBalHero = (selAcct ? [selAcct] : allAccts).reduce(function(sum, a) {
+      return sum + allTxns.filter(function(t){ return t.account===a && t.date<=cutoff; }).reduce(function(s,t){ return s+t.amount; }, 0);
+    }, 0);
+  }
+  var balLabel = selMo ? 'Ending Balance' : 'Net Worth';
+
   document.getElementById('dhero').innerHTML =
     '<div class="hero">'+
-    '<div class="hlbl">'+lbl+' · Net Flow</div>'+
+    '<div class="hlbl">'+lbl+' · Net Flow'+(selAcct?' · '+al(selAcct):'')+' </div>'+
     '<div class="hamt '+(net>=0?'g':'r')+'">Rp '+fn(net)+'</div>'+
     '<div class="hrow">'+
       '<div class="hstat" onclick="openTxnList(\'income\',selMo)" style="cursor:pointer;"><div class="hslbl">Income ›</div><div class="hsval" style="color:var(--green);">+'+fn(inc)+'</div></div>'+
       '<div class="hdiv"></div>'+
       '<div class="hstat" onclick="openTxnList(\'expense\',selMo)" style="cursor:pointer;"><div class="hslbl">Expenses ›</div><div class="hsval" style="color:var(--red);">-'+fn(Math.abs(exp))+'</div></div>'+
       '<div class="hdiv"></div>'+
-      '<div class="hstat" onclick="openTxnList(\'all\',selMo)" style="cursor:pointer;"><div class="hslbl">Net Worth ›</div><div class="hsval" style="color:var(--ac);">'+fn(totBal)+'</div></div>'+
+      '<div class="hstat" onclick="openTxnList(\'all\',selMo)" style="cursor:pointer;"><div class="hslbl">'+balLabel+' ›</div><div class="hsval" style="color:var(--ac);">'+fn(endingBalHero)+'</div></div>'+
     '</div></div>';
 
   var topCat = (function(){
@@ -1345,11 +1355,48 @@ function renderDash() {
     if (dacctSection) dacctSection.style.display = '';
     if (dacctHdr) dacctHdr.style.display = '';
   }
-  document.getElementById('daccts').innerHTML = allAccts.map(function(a){
-    var txnsForMonth = selMo ? allTxns.filter(function(t){ return t.account===a && t.date.indexOf(selMo)===0; }) : allTxns.filter(function(t){ return t.account===a; });
-    var monthExp = txnsForMonth.filter(function(t){ return t.amount<0&&!isTf(t.category); }).reduce(function(s,t){ return s+t.amount; },0);
-    var sub = selMo ? (txnsForMonth.length+' txns · -'+fn(Math.abs(monthExp))) : (RAW_DATA[a].length+' txns');
-    return '<div class="apill" onclick="openAcctDrawer(\''+a+'\')">'+'<div class="apname">'+al(a)+'</div>'+'<div class="apbal '+(acctBals[a]<0?'r':'')+'">Rp '+fn(acctBals[a])+'</div>'+'<div style="font-size:10px;color:var(--txm);margin-top:3px;">'+sub+'</div></div>';
+  var pillsEl = document.getElementById('daccts');
+  var filteredAccts = selAcct ? allAccts.filter(function(a){ return a === selAcct; }) : allAccts;
+  pillsEl.innerHTML = filteredAccts.map(function(a){
+    var allAcctTxns = allTxns.filter(function(t){ return t.account===a; });
+    var txnsForMonth = selMo ? allAcctTxns.filter(function(t){ return t.date.indexOf(selMo)===0; }) : allAcctTxns;
+
+    // Ending balance: sum of all transactions up to end of selected month
+    var endingBal = selMo
+      ? allAcctTxns.filter(function(t){ return t.date <= selMo+'-31'; }).reduce(function(s,t){ return s+t.amount; },0)
+      : acctBals[a];
+
+    // Period net change (this month only)
+    var periodNet = txnsForMonth.filter(function(t){ return !isTf(t.category); }).reduce(function(s,t){ return s+t.amount; },0);
+    var periodInc = txnsForMonth.filter(function(t){ return t.amount>0&&!isTf(t.category); }).reduce(function(s,t){ return s+t.amount; },0);
+    var periodExp = txnsForMonth.filter(function(t){ return t.amount<0&&!isTf(t.category); }).reduce(function(s,t){ return s+t.amount; },0);
+
+    var netStr = periodNet === 0 ? '' : (periodNet > 0 ? '+'+fn(periodNet) : fn(periodNet));
+    var netColor = periodNet > 0 ? 'var(--green)' : periodNet < 0 ? 'var(--red)' : 'var(--txm)';
+    var balColor = endingBal < 0 ? 'r' : '';
+
+    var pill = document.createElement('div');
+    pill.className = 'apill';
+    pill.style.minWidth = '155px';
+
+    if (selMo) {
+      // With month filter: show ending balance + period change
+      pill.innerHTML =
+        '<div class="apname">'+al(a)+'</div>'+
+        '<div class="apbal '+balColor+'">Rp '+fn(endingBal)+'</div>'+
+        '<div style="font-size:10px;color:var(--txm);margin-top:2px;">Balance end of month</div>'+
+        (netStr ? '<div style="font-size:10px;font-family:JetBrains Mono,monospace;color:'+netColor+';margin-top:3px;font-weight:600;">'+netStr+' this month</div>' : '')+
+        (periodInc ? '<div style="font-size:10px;color:var(--txm);">▲ +'+fn(periodInc)+'  ▼ '+fn(Math.abs(periodExp))+'</div>' : '');
+    } else {
+      // No month filter: show current balance
+      pill.innerHTML =
+        '<div class="apname">'+al(a)+'</div>'+
+        '<div class="apbal '+balColor+'">Rp '+fn(endingBal)+'</div>'+
+        '<div style="font-size:10px;color:var(--txm);margin-top:2px;">'+allAcctTxns.length+' transactions</div>';
+    }
+
+    (function(acctKey){ pill.addEventListener('click', function(){ openAcctDrawer(acctKey); }); })(a);
+    return pill.outerHTML;
   }).join('');
 
   setDashDonut(dashDonutMode);
